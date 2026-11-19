@@ -36,7 +36,8 @@ const TUESDAY = [
   ['Pallof press','2 × 10 per kant','60–90 s','RPE 6–7. Weersta rotatie.'],
   ['Dead bug','2 × 6–8 per kant','60 s','Gecontroleerd, met stabiele onderrug.'],
 ];
-const DEFAULT_GOALS = {rest:{p:140,c:250,f:75},training:{p:140,c:310,f:75},match:{p:140,c:355,f:75}};
+const LEGACY_GOALS = {rest:{p:140,c:250,f:75},training:{p:140,c:310,f:75},match:{p:140,c:355,f:75}};
+const DEFAULT_GOALS = {rest:{p:160,c:350,f:80},training:{p:160,c:410,f:80},match:{p:160,c:460,f:80}};
 const KIND_NAMES = {rest:'Herstel',training:'Training',match:'Match'};
 const EXERCISES = [
   {id:'squat',name:'Diepe back squat',group:'Kracht',unit:'reps',load:'Totaalgewicht inclusief stang',estimate:true,cue:'Gebruik een vaste, pijnvrije diepte. Zak gecontroleerd en duw snel omhoog.'},
@@ -136,6 +137,15 @@ function cleanTest(t){
   const measure=(n,max)=>bounded(n,0,max)?n:null;
   return {date:t.date,standing:measure(t.standing,200),running:measure(t.running,200),triple:measure(t.triple,18),note:String(t.note??'').slice(0,350)};
 }
+function cleanProfile(profile){
+  if(!profile||!isDate(profile.date))return null;
+  return {id:String(profile.id??uid()),date:profile.date,name:String(profile.name??'').slice(0,80),
+    sports:String(profile.sports??'').slice(0,240),goal:String(profile.goal??'').slice(0,240),note:String(profile.note??'').slice(0,1200),
+    knownJump:bounded(profile.knownJump,0,200)?profile.knownJump:null};
+}
+function latestProfile(){
+  return [...state.profiles].sort((a,b)=>b.date.localeCompare(a.date)||(b.order??0)-(a.order??0))[0];
+}
 function cleanBlock(block,start){
   const result={done:{},tests:{}};
   for(const [date,done] of Object.entries(block.done??{})){
@@ -164,6 +174,16 @@ function planOffset(date){
 function allJumpTests(){
   return [...Object.values(state.blocks).flatMap(block=>Object.values(block.tests)),...Object.values(state.tests),...Object.values(state.freeTests)]
     .sort((a,b)=>b.date.localeCompare(a.date));
+}
+function jumpHistory(){
+  const entries=Object.entries(state.blocks).flatMap(([start,block])=>Object.entries(block.tests).map(([key,test])=>({...test,key,start})));
+  entries.push(...Object.entries(state.tests).map(([key,test])=>({...test,key,start:state.program?.start??LEGACY_START})));
+  entries.push(...Object.values(state.freeTests).map(test=>({...test,key:'free',start:''})));
+  return entries.sort((a,b)=>b.date.localeCompare(a.date));
+}
+function testStage(date,start=START){
+  const offset=delta(date,start);
+  return offset===0?'baseline':offset===65?'final':null;
 }
 function matchingDayType(date){
   const items=state.events[date]??[], offset=planOffset(date);
@@ -199,7 +219,7 @@ const workoutDay = (day) => ![3,6].includes(weekday(day));
 const typeFor = matchingDayType;
 const setStatus = (id, text) => { $(id).textContent=text; };
 const uid = () => globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)+Math.random().toString(36).slice(2);
-const emptyState = () => ({version:1,done:{},meals:{},tests:{},logs:{},recipes:[],body:[],program:null,blocks:{},events:{},checkins:{},customExercises:{},freeTests:{},timeModes:{},goalsDefined:{},goals:JSON.parse(JSON.stringify(DEFAULT_GOALS))});
+const emptyState = () => ({version:1,done:{},meals:{},tests:{},logs:{},recipes:[],body:[],profiles:[],program:null,blocks:{},events:{},checkins:{},customExercises:{},freeTests:{},timeModes:{},goalsDefined:{},goals:JSON.parse(JSON.stringify(DEFAULT_GOALS))});
 let state=emptyState();
 function validateState(data){
   if(!data || data.version!==1 || !Array.isArray(data.body) || !data.done || !data.meals || !data.goals || !data.tests) throw Error('Ongeldig back-upbestand.');
@@ -237,13 +257,14 @@ function validateState(data){
     if(g&&valid(g.p,450)&&valid(g.c,1000)&&valid(g.f,350)) {
       safe.goals[k]={p:g.p,c:g.c,f:g.f};
       const fields=['p','c','f'];
-      if(data.goalsDefined?.[k]===true||(!data.goalsDefined&&fields.some(key=>g[key]!==DEFAULT_GOALS[k][key])))safe.goalsDefined[k]=true;
+      if(data.goalsDefined?.[k]===true||(!data.goalsDefined&&fields.some(key=>g[key]!==LEGACY_GOALS[k][key])))safe.goalsDefined[k]=true;
     }
   }
   const body=data.body.filter(x=>x&&isDate(x.date)&&valid(x.weight,350)&&x.weight>=20&&valid(x.height,250)&&x.height>=90)
     .map(x=>({id:String(x.id??uid()),date:x.date,time:/^\d\d:\d\d$/.test(x.time)?x.time:'',weight:x.weight,height:x.height,
       fat:valid(x.fat,100)?x.fat:null,muscle:valid(x.muscle,100)?x.muscle:null,bone:valid(x.bone,100)?x.bone:null,water:valid(x.water,100)?x.water:null,note:String(x.note??'').slice(0,400)}));
   safe.body=body;
+  if(Array.isArray(data.profiles))safe.profiles=data.profiles.map(cleanProfile).filter(Boolean);
   const registry=Object.fromEntries([...EXERCISES,...Object.values(safe.customExercises)].map(item=>[item.id,item]));
   for(const [id,mode] of Object.entries(data.timeModes??{})){
     if(Object.hasOwn(registry,id)&&isTimed(registry[id])&&['fastest','longest'].includes(mode))safe.timeModes[id]=mode;
@@ -284,7 +305,7 @@ function session(w,d){
     const [jump,jumpDose,lift,liftDose,squat]=MONDAY[w];
     return {title:'Sprongkracht & benen',time:w===9?'Korte sessie':'80–95 min',intro:'Na je opwarming. Werk per oefening alle sets af.',
       moves:[
-        [jump,jumpDose,w===0?'90 s / 2 min':'2 min',w===0?'Volg de volgorde bij Testen. De triple jump is optioneel.':'Gebruik je vaste aanloop en beste afzet. Rust 30–60 s tussen sprongen.'],
+        ...(w===0?[]:[[jump,jumpDose,'2 min','Gebruik je vaste aanloop en beste afzet. Rust 30–60 s tussen sprongen.']]),
         [lift,liftDose,'2–3 min',w===0?'Kies een gewicht waarbij beide reps snel blijven en de opvang stabiel is.':'Volledige reset tussen reps. Houd de stangsnelheid hoog.'],
         ['Diepe back squat',squat,'3–4 min',w===0?'Bouw met je opwarmsets op tot een werkgewicht rond RPE 7.':'Vaste, pijnvrije diepte. Zak gecontroleerd, kom snel omhoog.'],
         ...auxExercises(w)]};
@@ -309,6 +330,7 @@ function session(w,d){
   return {title:d===3?'Herstel':'Rust',time:'Naar behoefte',intro:'Eventueel 20–30 min wandelen of fietsen op praattempo. Rust is ook prima.',moves:[]};
 }
 function showTab(tab,updateURL=true){
+  if(tab==='tests')tab='about';
   if(!$(tab)?.classList.contains('view'))return;
   if(updateURL&&location.hash!=='#'+tab)history.pushState(null,'','#'+tab);
   for(const view of all('section.view'))view.hidden=view.id!==tab;
@@ -332,10 +354,9 @@ function doneButton(date){
 function renderSession(date,expanded,context='plan'){
   const i=delta(date,START), w=Math.floor(i/7), d=weekday(date), s=session(w,d);
   const status=state.done[date]?'<span class="pill ok">✓ Voltooid</span>':'<span class="pill">'+escapeHTML(s.time)+'</span>';
-  const testLink=(w===0&&d===0)||(w===9&&d===2)?'<button class="btn" type="button" data-open="tests" data-test-date="'+date+'">Open testprotocol</button>':'';
   const open=expanded?'':'<button class="btn" type="button" data-jump="'+date+'">Bekijk oefeningen</button>';
   return '<p class="eyebrow">'+DAYS[d]+' · '+fmtDate(date)+'</p><div class="row between"><h3>'+escapeHTML(s.title)+'</h3>'+status+'</div><p class="muted">'+escapeHTML(s.intro)+'</p>'+
-    (expanded?s.moves.map(moveMarkup).join(''):'')+'<div class="actions spaced">'+(workoutDay(date)?doneButton(date):'')+testLink+open+
+    testMarkup(date)+(expanded?s.moves.map(moveMarkup).join(''):'')+'<div class="actions spaced">'+(workoutDay(date)?doneButton(date):'')+open+
     '<button type="button" class="btn" data-log-date="'+date+'" data-log-session="'+programLogId(date)+'" data-log-focus>Log een set</button><button type="button" class="btn small" data-copy-session="'+date+'">Kopieer sessie</button></div><p class="status" id="'+context+'-copy-'+date+'" role="status"></p>';
 }
 function renderTraining(){
@@ -399,8 +420,8 @@ function renderToday(){
     '<button type="button" class="btn" data-food-date="'+current+'" data-food-focus>Maaltijd toevoegen</button>'+
     '<button type="button" class="btn" data-recovery-date="'+current+'" data-recovery-focus>Check-in</button>';
   const todayProgram=offset===null?'':'<div class="entry"><div><strong>'+escapeHTML(session(Math.floor(offset/7),weekday(current)).title)+'</strong><small>Vertical Jump'+(state.done[current]?' · ✓ voltooid':'')+'</small></div><button class="btn small" type="button" data-jump="'+current+'">Bekijk sessie</button></div>';
-  $('today-session').innerHTML='<h3>Sportagenda vandaag</h3>'+(items.length||todayProgram?'<div class="list">'+todayProgram+items.map(item=>agendaRow(current,item,false)).join('')+'</div>':'<p class="muted small">Er staat vandaag geen sessie in je agenda.</p>');
-  const goalLabel=state.goalsDefined[kind]?'Jouw doel':'Voorbeelddoel';
+  $('today-session').innerHTML='<h3>Sportagenda vandaag</h3>'+(items.length||todayProgram?'<div class="list">'+todayProgram+(offset===null?'':testMarkup(current))+items.map(item=>agendaRow(current,item,false)).join('')+'</div>':'<p class="muted small">Er staat vandaag geen sessie in je agenda.</p>');
+  const goalLabel=state.goalsDefined[kind]?'Jouw doel':'Startdoel · afstemmen op je herstel';
   $('today-food').innerHTML='<p class="eyebrow">VOEDING VANDAAG · '+KIND_NAMES[kind]+'</p>'+
     '<div class="row between"><div><div class="stat">'+num(totals.kcal,0)+' <small> / '+num(g.kcal,0)+' kcal</small></div><div class="small muted">'+num(totals.p)+' / '+num(g.p)+' g eiwit · '+goalLabel+'</div></div>'+
     '<button class="btn small" type="button" data-adjust-goal="'+kind+'">Doel aanpassen</button></div>';
@@ -408,7 +429,7 @@ function renderToday(){
   const lastJump=allJumpTests().find(test=>test.running!=null)?.running;
   $('today-progress').innerHTML='<p class="eyebrow">TRAININGSVOORTGANG</p><div class="stat">'+logged+' <small>'+(logged===1?'logdag':'logdagen')+' deze week</small></div>'+
     '<p class="muted small">'+(lastJump==null?'Bewaar een sprongtest om je voortgang te volgen.':'Laatste aanloopsprong: '+num(lastJump)+' cm')+'</p>'+
-    '<button class="btn small" data-open="tests" type="button">Bekijk je testen</button>';
+    '<button class="btn small" data-open="about" type="button">Over mij en voortgang</button>';
   const check=state.checkins[current];
   $('today-recovery').innerHTML='<p class="eyebrow">HERSTEL VANDAAG</p><p class="muted small">'+(check?(checkinLabel(check)||'Check-in bewaard.'):'Volg je slaap en hoe fris je je voelt.')+'</p>'+
     '<button class="btn small" data-recovery-date="'+current+'" type="button">'+(check?'Bekijk check-in':'Doe je check-in')+'</button>';
@@ -424,9 +445,11 @@ function renderActiveView(tab,fromSync=false){
     case 'training': if(first||!fromSync)setProgramDate(); renderTraining(); break;
     case 'logbook': if(first)resetSetForm(); renderLog(first); break;
     case 'food':
-      if(first){resetFoodForm();resetRecipe();resetBodyForm();}
-      renderFood();renderTargets(!fromSync);renderBody();break;
-    case 'tests': if(first)loadTestForm(); renderProgramDates();renderTests();break;
+      if(first){resetFoodForm();resetRecipe();}
+      renderFood();renderTargets(!fromSync);break;
+    case 'about':
+      if(first){resetBodyForm();loadProfileForm();}
+      renderAbout();renderBody();renderTests();break;
     case 'library': renderLibrary();break;
     case 'recovery': if(first)loadCheckin(current); renderRecovery();break;
   }
@@ -436,10 +459,81 @@ function refresh(){
   renderActiveView(document.querySelector('section.view:not([hidden])').id,true);
 }
 const foodForm=$('food-form'), bodyForm=$('body-form'), goalsForm=$('goals-form'), testForm=$('test-form');
+const profileForm=$('profile-form');
 const field=(form,name)=>form.elements.namedItem(name);
 const value=(form,name)=>field(form,name).value;
 const number=(form,name)=>value(form,name)===''?null:Number(value(form,name));
 const labelFor=(k,v)=>num(v,k==='kcal'?0:1)+(k==='kcal'?' kcal':' g');
+function loadProfileForm(){
+  const profile=latestProfile();
+  field(profileForm,'date').value=current;
+  for(const key of ['name','sports','goal','note'])field(profileForm,key).value=profile?.[key]??'';
+}
+function renderAbout(){
+  if($('about').hidden)return;
+  const profile=latestProfile();
+  const history=[];
+  $('profile-reading').innerHTML=profile?'<p><strong>'+escapeHTML(profile.name||'Mijn sportprofiel')+'</strong></p>'+
+    (profile.sports?'<p>'+escapeHTML(profile.sports)+'</p>':'')+(profile.goal?'<p><strong>Doel</strong> · '+escapeHTML(profile.goal)+'</p>':'')+
+    (profile.note?'<p class="small multiline">'+escapeHTML(profile.note)+'</p>':'')+
+    (profile.knownJump===null?'':'<p class="small muted">Eerder bekende aanloopsprong · '+num(profile.knownJump)+' cm · meetdatum onbekend.</p>'):
+    '<p class="muted">Vul je sportprofiel aan of voeg je eerdere startgegevens toe.</p>';
+  for(const item of state.profiles)history.push({date:item.date,kind:'Profiel',description:[item.name,item.sports,item.goal,item.note,
+    item.knownJump===null?'':'Eerder bekende aanloopsprong '+num(item.knownJump)+' cm · meetdatum onbekend'].filter(Boolean).join(' · ')});
+  for(const item of state.body)history.push({date:item.date,kind:'Lichaamsmeting',description:num(item.weight)+' kg · '+num(item.height)+' cm'+
+    (item.fat===null?'':' · vet '+num(item.fat)+'%')+(item.note?' · '+item.note:'')});
+  for(const item of jumpHistory())history.push({date:item.date,kind:{baseline:'Nulmeting',final:'Eindtest',free:'Sprongmeting'}[item.key],
+    description:[item.standing===null?'':'Standing '+num(item.standing)+' cm',item.running===null?'':'Running '+num(item.running)+' cm',
+    item.triple===null?'':'Triple jump '+num(item.triple,2)+' m',item.note].filter(Boolean).join(' · ')});
+  $('personal-history').innerHTML=history.sort((a,b)=>b.date.localeCompare(a.date)).map(item=>
+    '<div class="entry"><div><strong>'+escapeHTML(item.kind)+' · '+fmtDate(item.date)+'</strong><small class="multiline">'+escapeHTML(item.description)+'</small></div></div>').join('')||
+    '<p class="muted small">Je geschiedenis verschijnt zodra je een profiel, lichaamsmeting of sprongresultaat bewaart.</p>';
+}
+profileForm.addEventListener('submit',event=>{
+  event.preventDefault();
+  const profile=cleanProfile({id:uid(),date:value(profileForm,'date'),...Object.fromEntries(['name','sports','goal','note'].map(key=>[key,value(profileForm,key).trim()])),
+    knownJump:latestProfile()?.knownJump??null});
+  if(!profile||!['name','sports','goal','note'].some(key=>profile[key])){setStatus('profile-status','Vul minstens één profielveld in.');return;}
+  state.profiles.push(profile);
+  saveStatus('profile-status','Profiel toegevoegd aan je geschiedenis.',storedListItem('profile',profile));
+  renderAbout();
+});
+$('profile-import').addEventListener('change',async event=>{
+  const file=event.target.files[0];
+  if(!file)return;
+  try{
+    const incoming=JSON.parse(await file.text());
+    if(incoming.type!=='athlete-hub-profile'||incoming.version!==1)throw Error('Ongeldig profielbestand.');
+    const profiles=(incoming.profiles??[]).map(cleanProfile).filter(Boolean);
+    const backup=emptyState();
+    backup.body=incoming.body??[];
+    const body=validateState(backup).body;
+    if(!profiles.length&&!body.length)throw Error('Geen metingen gevonden.');
+    const changes=[];
+    for(const [collection,list,newItems] of [['profile',state.profiles,profiles],['body',state.body,body]]){
+      for(const item of newItems){
+        if(list.some(existing=>existing.id===item.id))continue;
+        if(collection==='body'&&list.some(existing=>existing.date===item.date&&existing.time===item.time))continue;
+        list.push(item);
+        changes.push(storedListItem(collection,item));
+      }
+    }
+    if(changes.length)await saveStatus('profile-import-status','Startgegevens aan je geschiedenis toegevoegd.',...changes);
+    else setStatus('profile-import-status','Deze startgegevens staan al in je geschiedenis.');
+    renderAbout();renderBody();loadProfileForm();
+  }catch{setStatus('profile-import-status','Kies een geldig bestand met Athlete Hub-startgegevens.');}
+  finally{event.target.value='';}
+});
+$('apply-athlete-goals').addEventListener('click',()=>{
+  const changes=[];
+  for(const [kind,goal] of Object.entries(DEFAULT_GOALS)){
+    state.goals[kind]={...goal};
+    state.goalsDefined[kind]=true;
+    changes.push(storeItem('goal',kind,goal));
+  }
+  saveStatus('nutrition-status','Startdoelen toegepast. Stem verder af op je gewichtstrend en herstel.',...changes);
+  renderTargets();renderFood();renderToday();
+});
 function entryMacros(t){return labelFor('kcal',t.kcal)+' · E '+num(t.p)+' · K '+num(t.c)+' · V '+num(t.f)+' g';}
 function renderFood(){
   if($('food').hidden)return;
@@ -475,9 +569,12 @@ function renderTargets(updateForm=true){
     Object.entries(state.goals).map(([kind,g])=>'<tr><th scope="row">'+KIND_NAMES[kind]+'</th><td>'+num(energy(g))+'</td><td>'+num(g.p)+' g</td><td>'+num(g.c)+' g</td><td>'+num(g.f)+' g</td></tr>').join('')+'</tbody></table>';
   const g=state.goals[$('goal-kind').value];
   if(updateForm)for(const k of ['p','c','f'])field(goalsForm,k).value=g[k];
+  const latest=[...state.body].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time))[0];
+  $('nutrition-weight-context').textContent=latest?'Bij je laatste meting van '+num(latest.weight)+' kg is 160 g eiwit '+num(160/latest.weight,2)+' g/kg. Gebruik je ochtendgewichtstrend voor verdere bijsturing.':
+    'Je laatste lichaamsmeting onder Over mij geeft extra context bij de doelen.';
 }
 function renderBody(){
-  if($('food').hidden)return;
+  if($('about').hidden)return;
   const measurements=[...state.body].sort((a,b)=>(b.date+b.time).localeCompare(a.date+a.time));
   const latest=measurements[0], shown=(v,suffix)=>v==null?'—':num(v)+suffix;
   if(!latest){
@@ -493,25 +590,44 @@ function renderBody(){
   $('body-history').innerHTML='<table><thead><tr><th>Meting</th><th>Acties</th><th>Gewicht</th><th>Lengte</th><th>Vet</th><th>Spier</th><th>Bot</th><th>Water</th><th>Context</th></tr></thead><tbody>'+
     measurements.map(x=>'<tr><th scope="row">'+fmtDate(x.date)+(x.time?' '+escapeHTML(x.time):'')+'</th><td>'+actions(x)+'</td><td>'+shown(x.weight,' kg')+'</td><td>'+shown(x.height,' cm')+'</td><td>'+shown(x.fat,'%')+'</td><td>'+shown(x.muscle,'%')+'</td><td>'+shown(x.bone,'%')+'</td><td>'+shown(x.water,'%')+'</td><td>'+escapeHTML(x.note)+'</td></tr>').join('')+'</tbody></table>';
 }
+let testContext={key:'free',start:'',date:null};
 function loadTestForm(){
-  const key=$('test-key').value;
-  const freeDate=value(testForm,'date')||current;
-  const t=(key==='free'?state.freeTests[freeDate]:state.tests[key])??{};
-  field(testForm,'date').value=t.date??(key==='free'?freeDate:key==='baseline'?START:plusDay(START,65));
-  for(const key of ['standing','running','triple','note'])field(testForm,key).value=t[key]??'';
+  const {key,start,date}=testContext;
+  const saved=key==='free'?state.freeTests[date]:(start===state.program?.start?state.tests:state.blocks[start]?.tests??{})[key];
+  $('test-key').value=key;
+  field(testForm,'date').value=saved?.date??date??current;
+  for(const name of ['standing','running','triple','note'])field(testForm,name).value=saved?.[name]??'';
+  $('test-result-title').textContent={baseline:'Nulmeting',final:'Eindtest',free:'Sprongmeting'}[key];
+  $('test-result-context').textContent=key==='free'?'Vrije meting':fmtDate(start)+' · Vertical Jump · '+fmtDate(date);
+}
+function openTest(date,start,key){
+  testContext={date,start,key:key??testStage(date,start)??'free'};
+  loadTestForm();
+  setStatus('test-status','');
+  if(!$('test-result').open)$('test-result').showModal();
+}
+function testMarkup(date,start=START){
+  const stage=testStage(date,start);
+  if(!stage)return '';
+  const test=(start===state.program?.start?state.tests:state.blocks[start]?.tests??{})[stage];
+  const title=stage==='baseline'?'Nulmeting sprongkracht':'Eindtest sprongkracht';
+  return '<div class="test-panel"><div class="row between"><strong>'+title+'</strong><button class="btn small" type="button" data-test-info aria-label="Uitleg over de sprongtest">Info</button></div>'+
+    '<p class="small muted">Na de opwarming en vóór de overige training. Standing en running vertical, eventueel triple jump.</p>'+
+    '<div class="row between"><span class="small">'+(test?'Resultaat bewaard'+(test.running===null?'':' · running '+num(test.running)+' cm'):'3 pogingen per sprongtest')+'</span>'+
+    '<button class="btn small primary" type="button" data-test-date="'+date+'" data-test-start="'+start+'">'+(test?'Resultaat bekijken':'Resultaat invoeren')+'</button></div></div>';
 }
 function renderTests(){
-  if($('tests').hidden)return;
+  if($('about').hidden)return;
   const a=state.tests.baseline,b=state.tests.final;
-  const rows=[['standing','Standing','cm'],['running','Running','cm'],['triple','Triple jump','m']].map(([k,name,unit])=>{
-    const change=a?.[k]!=null&&b?.[k]!=null?b[k]-a[k]:null;
-    return '<tr><th scope="row">'+name+' ('+unit+')</th><td>'+(a?.[k]==null?'—':num(a[k],2))+'</td><td>'+(b?.[k]==null?'—':num(b[k],2))+'</td><td>'+(change==null?'—':(change>0?'+':'')+num(change,2))+'</td></tr>';
+  const rows=[['standing','Standing','cm'],['running','Running','cm'],['triple','Triple jump','m']].map(([key,name,unit])=>{
+    const change=a?.[key]!=null&&b?.[key]!=null?b[key]-a[key]:null;
+    return '<tr><th scope="row">'+name+' ('+unit+')</th><td>'+(a?.[key]==null?'—':num(a[key],2))+'</td><td>'+(b?.[key]==null?'—':num(b[key],2))+'</td><td>'+(change==null?'—':(change>0?'+':'')+num(change,2))+'</td></tr>';
   }).join('');
-  $('test-summary').innerHTML='<table class="spaced"><thead><tr><th>Test</th><th>Week 1</th><th>Week 10</th><th>Verschil</th></tr></thead><tbody>'+rows+'</tbody></table>';
-  const history=allJumpTests();
-  $('test-history').innerHTML=history.length?'<table><thead><tr><th>Datum</th><th>Standing (cm)</th><th>Running (cm)</th><th>Triple (m)</th><th>Notitie</th></tr></thead><tbody>'+
-    history.map(t=>'<tr><th scope="row">'+fmtDate(t.date)+'</th>'+['standing','running','triple'].map(k=>'<td>'+(t[k]==null?'—':num(t[k],2))+'</td>').join('')+'<td>'+escapeHTML(t.note)+'</td></tr>').join('')+
-    '</tbody></table>':'<p class="muted small">Je hebt nog geen testresultaten.</p>';
+  $('test-summary').innerHTML=state.program?'<p class="small muted">Programma gestart op '+fmtDate(state.program.start)+'</p><table><thead><tr><th>Test</th><th>Nulmeting</th><th>Eindtest</th><th>Verschil</th></tr></thead><tbody>'+rows+'</tbody></table>':'';
+  const history=jumpHistory();
+  $('test-history').innerHTML=history.length?'<table><thead><tr><th>Datum</th><th>Standing (cm)</th><th>Running (cm)</th><th>Triple (m)</th><th>Notitie</th><th>Acties</th></tr></thead><tbody>'+
+    history.map(test=>'<tr><th scope="row">'+fmtDate(test.date)+'</th>'+['standing','running','triple'].map(key=>'<td>'+(test[key]==null?'—':num(test[key],2))+'</td>').join('')+'<td>'+escapeHTML(test.note)+'</td><td><button class="btn small" type="button" data-test-date="'+test.date+'" data-test-start="'+test.start+'" data-test-kind="'+test.key+'">Bekijk</button></td></tr>').join('')+
+    '</tbody></table>':'<p class="muted small">Je hebt nog geen gedateerde sprongtests. Geplande tests verschijnen op de eerste en laatste testdag van je programma.</p>';
 }
 function foodMode(mode){
   for(const key of ['barcode','ticket','photo'])$('mode-'+key).hidden=mode!==key;
@@ -611,7 +727,7 @@ bodyForm.addEventListener('submit',event=>{
   else state.body[index]=body;
   resetBodyForm();
   saveStatus('body-status',index<0?'Meting bewaard.':'Meting gewijzigd.',item);
-  renderBody();
+  renderBody();renderAbout();
 });
 testForm.addEventListener('submit',event=>{
   event.preventDefault();
@@ -619,37 +735,33 @@ testForm.addEventListener('submit',event=>{
   if(!isDate(date))return;
   const t={date,note:value(testForm,'note').trim(),standing:number(testForm,'standing'),running:number(testForm,'running'),triple:number(testForm,'triple')};
   if([t.standing,t.running,t.triple].every(n=>n===null)){setStatus('test-status','Voer minstens één meetresultaat in.');return;}
-  const key=$('test-key').value;
+  const {key,start}=testContext;
   const changes=[];
   if(key==='free'){
     state.freeTests[date]=t;
     changes.push(storeItem('freeTest',date,t));
   }
   else {
-    if(!state.program){
-      state.program={start:START,enabled:false};
+    if(!state.program&&start===START){
+      state.program={start,enabled:false};
       changes.push(storeItem('meta','program',state.program));
     }
-    state.tests[key]=t;
-    changes.push(storeItem('test',key,t,state.program.start));
+    const block=start===state.program?.start?state:(state.blocks[start]??={done:{},tests:{}});
+    block.tests[key]=t;
+    changes.push(storeItem('test',key,t,start));
   }
-  saveStatus('test-status','Resultaat bewaard.',...changes);renderTests();renderToday();renderLibrary();
+  saveStatus('test-status','Resultaat bewaard.',...changes);
+  renderTests();renderAbout();renderToday();renderLibrary();renderTraining();renderAgenda();renderLog();
 });
-$('test-key').addEventListener('change',()=>{
-  if($('test-key').value==='free')field(testForm,'date').value=current;
-  loadTestForm();setStatus('test-status','');
-});
-field(testForm,'date').addEventListener('change',()=>{if($('test-key').value==='free')loadTestForm();});
 document.addEventListener('click',event=>{
   const button=event.target.closest('button');
   if(!button)return;
   const data=button.dataset;
   if(data.tab)showTab(data.tab);
+  if(data.testInfo!==undefined)$('test-info').showModal();
+  if(data.testDate)openTest(data.testDate,data.testStart??START,data.testKind);
+  if(data.newTest!==undefined)openTest(current,'','free');
   if(data.open){
-    if(data.open==='tests'){
-      const base=button.dataset.testDate;
-      if(base){$('test-key').value=delta(base,START)>=63?'final':'baseline';loadTestForm();}
-    }
     showTab(data.open);
     if(data.scrollTo){const target=$(data.scrollTo);target.scrollIntoView({block:'center'});$('backup-out').focus({preventScroll:true});}
   }
@@ -722,7 +834,7 @@ document.addEventListener('click',event=>{
     state.body=state.body.filter(entry=>entry.id!==data.bodyDelete);
     if(editingBody===data.bodyDelete)resetBodyForm();
     saveStatus('body-status','Meting gewist.',removeItem('body',data.bodyDelete));
-    renderBody();
+    renderBody();renderAbout();
   }
 });
 const MAX_PHOTO=18*1024*1024;
@@ -1040,6 +1152,7 @@ function renderLog(loadNote=false){
   $('log-heading').textContent=planned.title;
   $('log-description').textContent=fmtDate(logDate)+(planned.exercises.length?' · Tik op een oefening om ze te loggen.':' · Kies zelf een oefening.');
   $('log-planned').innerHTML=planned.exercises.map(id=>'<button class="btn small" type="button" data-prefill="'+id+'">'+escapeHTML(exerciseById[id].name)+'</button>').join('');
+  $('log-test').innerHTML=logSession===programLogId(logDate)?testMarkup(logDate):'';
   $('set-list').innerHTML=sets.map((set,i)=>
     '<div class="entry"><div><strong>'+escapeHTML(exerciseById[set.exercise].name)+'</strong><small>'+describeSet(set)+'</small></div>'+
     '<div class="actions"><button class="btn small" type="button" data-edit-set="'+escapeHTML(set.id)+'">Wijzig</button><button class="btn small danger" type="button" data-delete-set="'+escapeHTML(set.id)+'" aria-label="Verwijder set '+(i+1)+'">Wis</button></div></div>'
@@ -1118,7 +1231,7 @@ function renderLibrary(){
     '<div class="actions"><button class="btn primary small" type="button" data-log-exercise="'+x.id+'">Log op gekozen datum</button></div><h3 class="subline">Geschiedenis</h3>'+
     (history.length?'<p class="small muted">'+history.length+' gelogde '+(history.length===1?'set':'sets')+'</p><div class="set-list">'+history.slice(0,20).map(item=>
       '<div class="entry"><div><strong>'+describeSet(item)+'</strong><small>'+fmtDate(item.date)+(item.fromTest?' · test':'')+'</small></div>'+
-      (item.fromTest?'<button type="button" class="btn small" data-open="tests">Open testen</button>':'<button type="button" class="btn small" data-log-date="'+item.date+'" data-log-session="'+escapeHTML(item.session)+'">Open sessie</button>')+'</div>').join('')+'</div>'+
+      (item.fromTest?'<button type="button" class="btn small" data-open="about">Bekijk metingen</button>':'<button type="button" class="btn small" data-log-date="'+item.date+'" data-log-session="'+escapeHTML(item.session)+'">Open sessie</button>')+'</div>').join('')+'</div>'+
       (history.length>20?'<p class="muted small">Laatste 20 sets getoond. Oudere sets staan in het daglogboek.</p>':''):'<p class="muted small">Voor deze oefening heb je nog geen sets gelogd.</p>');
 }
 $('log-date').addEventListener('change',event=>{
@@ -1343,10 +1456,6 @@ function setProgramDate(focusToday=false,updateForm=true){
     field(programForm,'enabled').checked=state.program?.enabled??false;
   }
 }
-function renderProgramDates(){
-  $('test-baseline-date').textContent=DAYS[0]+' '+fmtDate(START);
-  $('test-final-date').textContent=DAYS[2]+' '+fmtDate(plusDay(START,65));
-}
 programForm.addEventListener('submit',event=>{
   event.preventDefault();
   const start=value(programForm,'start');
@@ -1363,7 +1472,6 @@ programForm.addEventListener('submit',event=>{
   }
   state.program={start,enabled:field(programForm,'enabled').checked};
   setProgramDate(true);
-  loadTestForm();
   refresh();
   saveStatus('program-status',state.program.enabled?'Programma actief vanaf '+fmtDate(start)+'.':'Startdatum bewaard. Het programma is beschikbaar onder Programma’s.',storeItem('meta','program',state.program));
 });
@@ -1390,7 +1498,7 @@ function renderAgenda(){
       (state.done[date]?' · ✓ voltooid':'')+'</small></div><div class="actions"><button type="button" class="btn small" data-jump="'+date+'">Bekijk sessie</button>'+
       '<button type="button" class="btn small" data-log-date="'+date+'" data-log-session="'+programLogId(date)+'" data-log-focus>Log een set</button></div></div>';
     return '<div class="agenda-day"><div class="row between"><h4>'+name+' <small>'+fmtDate(date)+'</small></h4><button type="button" class="btn small" data-new-agenda="'+date+'">Sessie toevoegen</button></div>'+
-      (builtIn||items.length?builtIn+items.map(item=>agendaRow(date,item,true)).join(''):'<p class="muted small">Vrij</p>')+'</div>';
+      (builtIn||items.length?builtIn+(offset===null?'':testMarkup(date))+items.map(item=>agendaRow(date,item,true)).join(''):'<p class="muted small">Vrij</p>')+'</div>';
   }).join('');
 }
 function openEventForm(date,item){
@@ -1547,7 +1655,7 @@ async function startApp(){
   $('startup-status').hidden=true;
   const initialTab=location.hash.slice(1);
   performance.mark('athlete-hub-render-start');
-  showTab($(initialTab)?.classList.contains('view')?initialTab:'today',false);
+  showTab(initialTab==='tests'?'about':$(initialTab)?.classList.contains('view')?initialTab:'today',false);
   performance.measure('athlete-hub-first-render','athlete-hub-render-start');
   window.addEventListener('hashchange',showLinkedTab);
   window.addEventListener('popstate',showLinkedTab);

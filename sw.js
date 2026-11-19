@@ -1,6 +1,6 @@
 const root = new URL(self.registration.scope);
 const cachePrefix = 'athlete-hub:' + root.pathname + ':';
-const cacheName = cachePrefix + 'v2';
+const cacheName = cachePrefix + 'v3';
 const appPage = new URL('index.html', root).href;
 const files = ['index.html', 'styles.css', 'storage.js', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 const shell = new Set(files.map(file => new URL(file, root).href));

@@ -141,6 +141,7 @@ function recordsFromState(data) {
     if (data.goalsDefined[kind]) rows.push(storeItem('goal',kind,value));
   }
   items('body',data.body);
+  items('profile',data.profiles);
   items('recipe',data.recipes);
   entries('exercise',data.customExercises);
   entries('checkin',data.checkins);
@@ -166,6 +167,7 @@ function stateFromRecords(rows) {
       else log.sessionNotes[id]=value;
     }
     else if (collection==='body') data.body.push(value);
+    else if (collection==='profile') data.profiles.push(value);
     else if (collection==='recipe') data.recipes.push(value);
     else if (collection==='goal') {
       data.goals[id]=value;
