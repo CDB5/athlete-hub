@@ -147,13 +147,14 @@ function recordsFromState(data) {
   entries('checkin',data.checkins);
   entries('freeTest',data.freeTests);
   entries('timeMode',data.timeModes);
+  entries('product',data.products);
   return rows;
 }
 
 function stateFromRecords(rows) {
   const data = emptyState();
   const lists = {meal:data.meals,event:data.events};
-  const maps = {checkin:data.checkins,exercise:data.customExercises,freeTest:data.freeTests,timeMode:data.timeModes};
+  const maps = {checkin:data.checkins,exercise:data.customExercises,freeTest:data.freeTests,timeMode:data.timeModes,product:data.products};
   const logFor = date => data.logs[date]??={sets:[],note:'',sessionNotes:{}};
   rows.sort((a,b)=>(a.order??0)-(b.order??0));
   for (const {collection,id,scope,value,order} of rows) {

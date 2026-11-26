@@ -219,7 +219,7 @@ const workoutDay = (day) => ![3,6].includes(weekday(day));
 const typeFor = matchingDayType;
 const setStatus = (id, text) => { $(id).textContent=text; };
 const uid = () => globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)+Math.random().toString(36).slice(2);
-const emptyState = () => ({version:1,done:{},meals:{},tests:{},logs:{},recipes:[],body:[],profiles:[],program:null,blocks:{},events:{},checkins:{},customExercises:{},freeTests:{},timeModes:{},goalsDefined:{},goals:JSON.parse(JSON.stringify(DEFAULT_GOALS))});
+const emptyState = () => ({version:1,done:{},meals:{},tests:{},logs:{},recipes:[],products:{},body:[],profiles:[],program:null,blocks:{},events:{},checkins:{},customExercises:{},freeTests:{},timeModes:{},goalsDefined:{},goals:JSON.parse(JSON.stringify(DEFAULT_GOALS))});
 let state=emptyState();
 function validateState(data){
   if(!data || data.version!==1 || !Array.isArray(data.body) || !data.done || !data.meals || !data.goals || !data.tests) throw Error('Ongeldig back-upbestand.');
@@ -281,6 +281,10 @@ function validateState(data){
     if(sets.length||note||Object.keys(sessionNotes).length)safe.logs[date]={sets,note,sessionNotes};
   }
   if(Array.isArray(data.recipes))safe.recipes=data.recipes.map(cleanRecipe).filter(Boolean);
+  for(const product of Object.values(data.products??{})){
+    const clean=cleanProduct(product);
+    if(clean)safe.products[clean.id]=clean;
+  }
   return safe;
 }
 let current=todayKey();
@@ -547,6 +551,7 @@ function renderFood(){
     '<p class="muted small subline">Je hebt voor deze dag nog niets gelogd.</p>';
   renderFoodWeek();
   renderRecipes();
+  renderProducts();
 }
 function renderFoodWeek(){
   if($('food').hidden)return;
@@ -641,6 +646,8 @@ function foodMode(mode){
 function setFoodFields(entry){
   for(const k of ['name','amount','basis',...totalsKeys])field(foodForm,k).value=entry[k]??(k==='basis'?'100':'');
   sourceLabel=entry.source??'';
+  setFoodProductContext(entry);
+  $('personal-product').value=entry.savedProductId??'';
   foodPreview();
 }
 function foodPreview(){
@@ -652,6 +659,7 @@ function foodPreview(){
 function resetFoodForm(){
   editing=null;
   sourceLabel='';
+  foodProductContext={};
   foodForm.reset();
   $('edit-cancel').hidden=true;
   $('food-submit').textContent='Toevoegen aan dag';
@@ -844,7 +852,7 @@ async function findBarcode(){
   setLoading(button,true);setStatus('barcode-status','Product opzoeken…');
   const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),9000);
   try{
-    const response=await fetch('https://world.openfoodfacts.org/api/v2/product/'+code+'?fields=product_name,product_name_nl,nutriments',{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer'});
+    const response=await fetch('https://world.openfoodfacts.org/api/v2/product/'+code+'?fields=product_name,product_name_nl,brands,nutriments',{signal:controller.signal,credentials:'omit',referrerPolicy:'no-referrer'});
     if(response.status===404)throw Error('Geen product gevonden. Gebruik het etiket om de waarden zelf in te vullen.');
     if(!response.ok)throw Error('Opzoeken lukt nu niet. Gebruik het etiket om de waarden zelf in te vullen.');
     const data=await response.json();
@@ -854,7 +862,7 @@ async function findBarcode(){
     const kcal=normalize(n['energy-kcal_100g'])??(n['energy-kj_100g']==null?null:normalize(Number(n['energy-kj_100g'])/4.184));
     const macros={kcal,p:normalize(n.proteins_100g),c:normalize(n.carbohydrates_100g),f:normalize(n.fat_100g)};
     $('presets').value='';
-    setFoodFields({name:String(product.product_name_nl||product.product_name||'Product '+code).slice(0,100),amount:number(foodForm,'amount'),basis:100,...macros,source:'Open Food Facts · '+code});
+    setFoodFields({name:String(product.product_name_nl||product.product_name||'Product '+code).slice(0,100),brand:String(product.brands??'').slice(0,80),barcode:code,amount:number(foodForm,'amount'),basis:100,...macros,source:'Open Food Facts · '+code});
     setStatus('barcode-status',totalsKeys.some(key=>macros[key]===null)?'Product gevonden. Vul de ontbrekende vakken aan via het etiket.':'Product gevonden. Controleer de waarden en vul je portie in.');
     field(foodForm,'amount').focus();
   }catch(error){setStatus('barcode-status',error.name==='AbortError'?'De databank reageert te traag. Probeer opnieuw of vul handmatig in.':error.message==='Failed to fetch'?'De databank is niet bereikbaar. Vul het product handmatig in.':error.message);}
@@ -1375,6 +1383,7 @@ function loadStateViews(){
   logDate=foodDay=current;
   logSession='free';
   foodWeek=weekMonday(current);
+  resetProductEditor();
   refresh();
 }
 $('wipe-data').addEventListener('click',async ()=>{
@@ -1645,6 +1654,7 @@ exerciseForm.addEventListener('submit',event=>{
   saveStatus('exercise-status','Oefening toegevoegd.',storeItem('exercise',entry.id,entry));
 });
 field(exerciseForm,'type').innerHTML=Object.entries(CUSTOM_UNITS).map(([key,name])=>'<option value="'+key+'">'+name+'</option>').join('');
+initProducts();
 const showLinkedTab=()=>{const tab=location.hash.slice(1);if(tab!=='main')showTab(tab||'today',false);};
 async function startApp(){
   await startStorage();
