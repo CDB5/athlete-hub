@@ -29,7 +29,7 @@ button[aria-busy=true]{opacity:1;gap:8px}.loading::before{content:"";width:.85re
 .agenda-entry .actions{justify-content:flex-end}.agenda-entry small{white-space:pre-line}
 .program-content{display:grid;gap:18px}.program-card{border-left:4px solid var(--gold)}
 @media(max-width:550px){.nav .wrap{grid-template-columns:repeat(4,minmax(0,1fr))}.nav button{min-height:41px;font-size:.74rem}.agenda-entry{align-items:flex-start;flex-wrap:wrap}}
-.header-row .mark{display:block;object-fit:cover;background:var(--primary)}
+.header-row .mark{display:block;width:44px;height:44px;flex-shrink:0;object-fit:contain;background:#000}
 .header-row .install-action{white-space:nowrap}
 .nav .wrap{grid-template-columns:repeat(9,minmax(0,1fr))}
 #startup-status{padding-top:12px}
@@ -66,6 +66,6 @@ button[aria-busy=true]{opacity:1;gap:8px}.loading::before{content:"";width:.85re
   .quick-actions .btn{min-height:48px;padding:6px;font-size:.83rem;line-height:1.22;text-align:center}
 }
 @media(max-width:390px){
-  .header-row .install-action{font-size:.76rem}
+  .header-row .install-action{font-size:.76rem;max-width:116px;white-space:normal;text-align:center;line-height:1.2}
   .log-context{grid-template-columns:minmax(105px,.8fr) minmax(0,1.2fr)}
 }

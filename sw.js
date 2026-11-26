@@ -1,8 +1,12 @@
 const root = new URL(self.registration.scope);
 const cachePrefix = 'athlete-hub:' + root.pathname + ':';
-const cacheName = cachePrefix + 'v4';
+const cacheName = cachePrefix + 'v5';
 const appPage = new URL('index.html', root).href;
-const files = ['index.html', 'styles.css', 'storage.js', 'products.js', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
+const files = [
+  'index.html', 'styles.css', 'storage.js', 'products.js', 'app.js', 'manifest.webmanifest',
+  'icon-192.png?v=2', 'icon-512.png?v=2',
+  'assets/logo-96.png', 'assets/favicon-48.png', 'assets/apple-touch-icon.png',
+];
 const shell = new Set(files.map(file => new URL(file, root).href));
 
 self.addEventListener('install', event => {
