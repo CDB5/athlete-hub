@@ -375,6 +375,16 @@ function renderSession(date,expanded,context='plan'){
 }
 function renderTraining(){
   if($('training').hidden)return;
+  const selected=!!state.program||programPreview;
+  $('program-empty').hidden=selected;
+  $('program-settings').hidden=!selected;
+  $('program-content').hidden=!selected;
+  $('program-cancel').hidden=!!state.program||!programPreview;
+  $('program-submit').textContent=state.program?'Programma instellen':'Programma toevoegen';
+  if(!selected){
+    for(const id of ['week-pick','day-pick','training-session'])$(id).replaceChildren();
+    return;
+  }
   const first=plusDay(START,week*7);
   $('week-heading').innerHTML='Week '+(week+1)+' · <span class="phase">'+PHASES[week]+'</span>';
   $('week-progress').textContent=Object.keys(state.done).filter(k=>delta(k,first)>=0&&delta(k,first)<7&&workoutDay(k)).length+' / 5 sessies';
@@ -420,6 +430,7 @@ function nextSession(){
 }
 function renderToday(){
   if($('today').hidden)return;
+  renderWelcome();
   const offset=planOffset(current), items=sortedEvents(current), g=goalFor(current), totals=totalsFor(current), kind=typeFor(current);
   const upcoming=nextSession();
   const dateLabel=date=>DAYS[weekday(date)]+' '+fmtDate(date);
@@ -1391,6 +1402,7 @@ function sessionText(date){
 }
 function loadStateViews(){
   openedViews.clear();
+  programPreview=false;
   setProgramDate(true,false);
   syncExercises();
   agendaWeek=weekMonday(current);
@@ -1468,6 +1480,19 @@ $('meal-image').addEventListener('change',async event=>{
 });
 const agendaForm=$('agenda-form'), recoveryForm=$('recovery-form'), programForm=$('program-form'), exerciseForm=$('exercise-form');
 let agendaWeek=weekMonday(current), activeEvent=null;
+let programPreview=false;
+document.querySelector('[data-program-template]').addEventListener('click',()=>{
+  programPreview=true;
+  setProgramDate(true);
+  field(programForm,'enabled').checked=true;
+  renderTraining();
+  focusInput(field(programForm,'start'));
+});
+$('program-cancel').addEventListener('click',()=>{
+  programPreview=false;
+  $('program-catalog').open=false;
+  renderTraining();
+});
 function setProgramDate(focusToday=false,updateForm=true){
   START=state.program?.start??(weekday(current)===0?current:plusDay(weekMonday(current),7));
   if(focusToday){
@@ -1477,7 +1502,7 @@ function setProgramDate(focusToday=false,updateForm=true){
   }
   if(updateForm){
     field(programForm,'start').value=START;
-    field(programForm,'enabled').checked=state.program?.enabled??false;
+    field(programForm,'enabled').checked=state.program?.enabled??programPreview;
   }
 }
 programForm.addEventListener('submit',event=>{
@@ -1495,6 +1520,7 @@ programForm.addEventListener('submit',event=>{
     delete state.blocks[start];
   }
   state.program={start,enabled:field(programForm,'enabled').checked};
+  programPreview=false;
   setProgramDate(true);
   refresh();
   saveStatus('program-status',state.program.enabled?'Programma actief vanaf '+fmtDate(start)+'.':'Startdatum bewaard. Het programma is beschikbaar onder Programma’s.',storeItem('meta','program',state.program));

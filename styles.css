@@ -260,6 +260,10 @@ tbody tr:hover { background: #f7faf3; }
 .choice small { display: block; font-size: .75rem; margin-top: 2px; font-weight: 500; }
 .choice .check { color: #355e08; margin-left: 2px; }
 .program-content { display: grid; gap: 20px; min-width: 0; }
+.program-template { padding: 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--raised); }
+.welcome-card { border-color: #9db982; background: #f7fff0; }
+.welcome-card h2 { font-size: clamp(1.4rem, 2.4vw, 1.85rem); }
+.welcome-card > p { max-width: 72ch; }
 .exercise { display: grid; grid-template-columns: minmax(0, 1fr) minmax(98px, auto); align-items: start; gap: 8px 16px; padding: 17px 0; border-top: 1px solid var(--line); }
 .exercise:first-of-type { margin-top: 14px; }
 .exercise b { display: block; font-weight: 720; }

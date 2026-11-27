@@ -9,6 +9,7 @@ Athlete Hub is een mobiele sportagenda en trainingslogboek voor sporters. Plan s
 ## Gebruiken
 
 - Open op je telefoon en kies **Installeer Athlete Hub** voor de stappen op jouw toestel.
+- Nieuwe bezoekers beginnen met een lege planning en krijgen op Vandaag de knoppen **Account aanmaken** en **Aanmelden**. Onder **Programma’s → Trainingsprogramma kiezen** voeg je zelf een programma toe. Een bestaande keuze en je logboek blijven aan jouw account gekoppeld.
 - Het programma zet de nulmeting automatisch op de eerste maandag en de eindtest op woensdag in de taperweek. Op die dagen kun je het protocol via **Info** lezen en je resultaat invoeren.
 - **Over mij** bevat je profiel, lengte, gewicht en sprongmetingen met hun geschiedenis. De voedingsstartdoelen onder **Voeding** kun je afstemmen op je herstel en gewichtstrend.
 - Onder **Herstel** kun je **Polar Pacer Pro** kiezen en je waarden handmatig uit Polar Flow overnemen: onder andere slaap, Nightly Recharge, ochtend-rusthartslag en nachtelijke HRV. Hartslag en HRV krijgen een eigen referentie na minstens zeven eerdere metingen binnen 28 dagen. Het advies combineert deze trends met je eigen gevoel; de exacte afkapwaarden zijn coachingsregels. Bij de gymsessies van het Vertical Jump-programma kun je een lichtere variant kiezen en terugzetten. Er is geen automatische horlogekoppeling.

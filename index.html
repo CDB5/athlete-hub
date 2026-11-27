@@ -23,6 +23,11 @@
 <p id="storage-note" class="notice error" hidden>De browseropslag werkt hier niet. Nieuwe invoer kan tijdelijk zijn. Bewaar indien nodig een back-up via Instellingen.</p>
 <section class="view" id="today">
   <div class="row between today-heading"><h1>Vandaag</h1><div id="today-date" class="row"></div></div>
+  <article class="card welcome-card" id="today-welcome" hidden>
+    <p class="eyebrow">WELKOM BIJ ATHLETE HUB</p><h2>Begin met jouw eigen sportplan</h2>
+    <p>Maak een account om je programma’s, trainingen, producten en voeding bij te houden en op je computer en gsm te gebruiken. Je begint met een lege agenda en kiest zelf je programma.</p>
+    <div class="actions spaced"><button class="btn primary" type="button" data-account-start="register">Account aanmaken</button><button class="btn" type="button" data-account-start="login">Aanmelden</button><button class="btn small" type="button" data-open="training">Bekijk programma’s</button></div>
+  </article>
   <article class="card now" id="today-next" aria-label="Volgende sessie"></article>
   <div class="actions quick-actions" id="today-actions" aria-label="Snel toevoegen"></div>
   <div class="grid"><article class="card" id="today-session"></article><div class="stack"><article class="card" id="today-food"></article><article class="card" id="today-progress"></article><article class="card" id="today-recovery"></article></div></div>
@@ -96,15 +101,19 @@
   </details></article>
 </section>
 <section class="view" id="training" hidden>
-  <div><h2>Trainingsprogramma’s</h2><p class="muted">Kies een week en dag om het programma te bekijken.</p></div>
-<article class="card"><h3>Vertical Jump · 10 weken</h3><p class="muted">Een voorbeeldprogramma voor sprongkracht en volleybal. Start op een maandag naar keuze. Je eigen sportagenda blijft daarnaast beschikbaar.</p>
+  <div><h2>Trainingsprogramma’s</h2><p class="muted">Kies zelf een programma of plan je eigen sessies in de agenda.</p></div>
+  <article class="card" id="program-empty"><h3>Je hebt nog geen programma</h3><p class="muted">Je start met een lege planning. Voeg een programma toe wanneer je er klaar voor bent.</p>
+    <details id="program-catalog"><summary>Trainingsprogramma kiezen</summary><div class="program-template spaced"><h4>Vertical Jump · 10 weken</h4><p class="small muted">Een voorbeeldprogramma voor sprongkracht en volleybal, met krachtwerk, sprongtraining en tests. Je kiest zelf de startmaandag.</p><button class="btn primary" type="button" data-program-template="vertical-jump">Kies Vertical Jump</button></div></details>
+    <div class="actions spaced"><button class="btn" type="button" data-open="agenda">Eigen sessies plannen</button></div>
+  </article>
+<article class="card" id="program-settings" hidden><h3>Vertical Jump · 10 weken</h3><p class="muted">Stel je startmaandag in en voeg het programma toe aan je planning. Je eigen sportagenda blijft daarnaast beschikbaar.</p>
     <form id="program-form"><div class="fields">
       <label>Startmaandag<input name="start" type="date" required></label>
       <label class="row"><input name="enabled" type="checkbox">Toon in mijn agenda en op Vandaag</label>
-    </div><button class="btn primary form-actions" type="submit">Programma instellen</button><p class="status" id="program-status" role="status"></p></form>
+    </div><div class="actions form-actions"><button class="btn primary" id="program-submit" type="submit">Programma toevoegen</button><button class="btn" id="program-cancel" type="button" hidden>Annuleren</button></div><p class="status" id="program-status" role="status"></p></form>
     <div class="actions spaced"><button class="btn small" type="button" data-open="agenda">Plan een eigen trainingsweek</button></div>
   </article>
-<div class="program-content">
+<div class="program-content" id="program-content" hidden>
   <article class="card"><div class="weeks" id="week-pick" role="group" aria-label="Kies trainingsweek"></div><div class="row between"><h3 id="week-heading"></h3><span class="pill" id="week-progress"></span></div><div class="days" id="day-pick" role="group" aria-label="Kies trainingsdag"></div></article>
   <article class="card" id="training-session"></article>
   <article class="card"><h3>Uitvoering en herstel</h3>
@@ -292,7 +301,7 @@
   </article>
 </section>
 </main>
-<footer><div class="wrap footer-row"><span>Athlete Hub · Belgische tijd · Lokale opslag</span><div class="actions">
+<footer><div class="wrap footer-row"><span>Athlete Hub</span><div class="actions">
   <a href="#privacy">Privacybeleid</a><a href="#terms">Gebruiksvoorwaarden</a><button class="btn small" id="copy-link" type="button" hidden>Kopieer link</button>
 </div><p class="status" id="footer-status" role="status"></p></div></footer>
 <dialog id="copy-dialog" aria-labelledby="copy-title"><h3 id="copy-title">Kopieer de tekst</h3><textarea class="copy-field" id="copy-text" aria-label="Te kopiëren tekst" readonly rows="5"></textarea><form method="dialog"><button class="btn small spaced">Sluiten</button></form></dialog>

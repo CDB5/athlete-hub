@@ -24,8 +24,17 @@ function accountSummaryText(){
   return accountInfo?.lastSuccess?'Gesynchroniseerd':'Account laden…';
 }
 function accountBadge(){
-  return '<button type="button" class="btn small account-badge" data-open="account">'+
-    escapeHTML(accountUser?.username||accountUser?.user_metadata?.username||'Account')+' · '+escapeHTML(accountSummaryText())+'</button>';
+  return '<button type="button" class="btn small account-badge" data-open="account">Account</button>';
+}
+function hasPersonalData(){
+  return !!state.program||!!state.recoveryDevice||
+    ['body','profiles','recipes'].some(key=>state[key].length>0)||
+    ['done','meals','tests','logs','products','blocks','events','checkins','wearables',
+      'sessionAdjustments','customExercises','freeTests','timeModes'].some(key=>Object.keys(state[key]).length>0)||
+    Object.values(state.goalsDefined).some(Boolean);
+}
+function renderWelcome(){
+  $('today-welcome').hidden=!!accountUser||hasPersonalData();
 }
 function renderAccount(){
   if(!$('account'))return;
@@ -230,6 +239,14 @@ function initAccountControls(){
     }catch(error){accountMessage(error.message||'Overnemen mislukt.');}finally{guest?.close?.();}
   });
   document.addEventListener('click',event=>{
+    const start=event.target.closest('[data-account-start]');
+    if(start){
+      showTab('account');
+      const register=start.dataset.accountStart==='register';
+      const form=$(register?'account-register-form':'account-login-form');
+      if(accountConfig&&!accountUser)focusInput(field(form,register?'username':'identifier'));
+      return;
+    }
     const button=event.target.closest('[data-resolve]');if(!button||!database?.accountId)return;
     const conflict=accountInfo?.conflicts[Number(button.dataset.resolve)];if(!conflict)return;
     void database.resolveConflict([conflict.collection,conflict.scope,conflict.id],button.dataset.version);
