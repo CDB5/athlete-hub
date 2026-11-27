@@ -11,23 +11,18 @@
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon.png">
 <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
+<body class="auth-required">
 <a class="skip" href="#main">Naar inhoud</a>
 <header class="header"><div class="wrap header-row"><div class="brand"><img class="mark" src="./assets/logo-96.png" alt="" width="44" height="44"> ATHLETE HUB</div><button class="btn small install-action" type="button" data-install>Installeer Athlete Hub</button></div></header>
-<nav class="nav" aria-label="Hoofdnavigatie"><div class="wrap">
+<nav class="nav" aria-label="Hoofdnavigatie" hidden><div class="wrap">
   <button type="button" data-tab="today" aria-pressed="true">Vandaag</button><button type="button" data-tab="agenda" aria-pressed="false">Agenda</button><button type="button" data-tab="logbook" aria-pressed="false">Logboek</button><button type="button" data-tab="food" aria-pressed="false">Voeding</button>
   <button type="button" class="nav-secondary" data-tab="training" aria-pressed="false">Programma’s</button><button type="button" class="nav-secondary" data-tab="library" aria-pressed="false">Oefeningen</button><button type="button" class="nav-secondary" data-tab="about" aria-pressed="false">Over mij</button><button type="button" class="nav-secondary" data-tab="recovery" aria-pressed="false">Herstel</button><button type="button" data-tab="more" aria-pressed="false">Meer</button>
 </div></nav>
 <p id="startup-status" class="wrap muted small" role="status">Athlete Hub wordt geladen…</p>
 <main id="main" class="wrap" inert>
 <p id="storage-note" class="notice error" hidden>De browseropslag werkt hier niet. Nieuwe invoer kan tijdelijk zijn. Bewaar indien nodig een back-up via Instellingen.</p>
-<section class="view" id="today">
+<section class="view" id="today" hidden>
   <div class="row between today-heading"><h1>Vandaag</h1><div id="today-date" class="row"></div></div>
-  <article class="card welcome-card" id="today-welcome" hidden>
-    <p class="eyebrow">WELKOM BIJ ATHLETE HUB</p><h2>Begin met jouw eigen sportplan</h2>
-    <p>Maak een account om je programma’s, trainingen, producten en voeding bij te houden en op je computer en gsm te gebruiken. Je begint met een lege agenda en kiest zelf je programma.</p>
-    <div class="actions spaced"><a class="btn primary" href="https://cdb5.github.io/athlete-hub/?account=register#account" target="_blank" rel="noopener" data-account-start="register">Account aanmaken</a><a class="btn" href="https://cdb5.github.io/athlete-hub/?account=login#account" target="_blank" rel="noopener" data-account-start="login">Aanmelden</a><button class="btn small" type="button" data-open="training">Bekijk programma’s</button></div>
-  </article>
   <article class="card now" id="today-next" aria-label="Volgende sessie"></article>
   <div class="actions quick-actions" id="today-actions" aria-label="Snel toevoegen"></div>
   <div class="grid"><article class="card" id="today-session"></article><div class="stack"><article class="card" id="today-food"></article><article class="card" id="today-progress"></article><article class="card" id="today-recovery"></article></div></div>
@@ -250,22 +245,24 @@
   <div><h2>Instellingen</h2></div>
   <article class="card"><h3>Account en synchronisatie</h3><p id="account-short-status"></p><button class="btn" type="button" data-open="account">Account openen</button></article>
   <article class="card" id="data-tools"><h3>Gegevens op dit toestel</h3>
-    <p>Met een account bewaar je gegevens online en in de lokale cache van dat account. Zonder account blijft je invoer op dit toestel. Een JSON-back-up kun je bewaren of terugzetten. Bij een aangemeld account wordt een import ook naar je andere toestellen gesynchroniseerd.</p>
+    <p>Je gegevens worden in je online account en de lokale cache van dat account bewaard. Een JSON-back-up kun je downloaden of terugzetten. Een import wordt ook naar je andere toestellen gesynchroniseerd.</p>
     <div class="actions"><button type="button" class="btn primary" id="backup-out">Back-up downloaden</button><label>Back-up terugzetten<input id="backup-in" type="file" accept="application/json,.json"></label><button type="button" class="btn small danger" id="wipe-data">Gegevens wissen</button></div>
     <p class="status" id="backup-status" role="status"></p>
   </article>
   <article class="card"><h3>Verhuizen naar een ander webadres</h3><p>Download eerst een back-up op het oude adres. Open daarna de site op het nieuwe adres en zet de back-up hier terug. Doe dit op elk toestel met lokale invoer die je wilt meenemen.</p></article>
 </section>
 <section class="view" id="account" hidden>
-  <div><h2>Account en synchronisatie</h2><p class="muted">Gebruik hetzelfde account op je computer en gsm voor je producten, voeding, trainingen en herstelgegevens.</p></div>
-  <article class="card notice" id="account-setup"><h3>Online accounts worden voorbereid</h3><p>De online databank moet nog aan deze website worden gekoppeld. Je kunt de app blijven gebruiken met de gegevens op dit toestel.</p></article>
-  <article class="card" id="account-local-file" hidden><h3>Gebruik je account op de online versie</h3><p>Je hebt Athlete Hub als lokaal bestand geopend. Open de online versie om je aan te melden en je gegevens op je computer en gsm te gebruiken.</p><div class="actions"><a class="btn primary" href="https://cdb5.github.io/athlete-hub/?account=register#account" target="_blank" rel="noopener" data-account-start="register">Account aanmaken</a><a class="btn" href="https://cdb5.github.io/athlete-hub/?account=login#account" target="_blank" rel="noopener" data-account-start="login">Aanmelden</a></div><p class="small muted spaced">Je eerdere lokale invoer blijft hier bewaard. Download via Instellingen een back-up en zet die terug in je online account als je ze wilt meenemen.</p><button class="btn small" type="button" data-open="settings">Lokale back-up maken</button></article>
+  <div><h2>Account en synchronisatie</h2><p class="muted">Meld je aan of maak een account om Athlete Hub te gebruiken. Je programma’s, voeding en trainingen blijven aan jouw account gekoppeld.</p></div>
+  <p class="status" id="account-message" role="status" aria-live="polite"></p>
+  <article class="card notice" id="account-setup"><h3>Aanmelden is nog niet beschikbaar</h3><p>De online databank moet nog aan deze website worden gekoppeld. Probeer het later opnieuw.</p></article>
+  <article class="card" id="account-local-file" hidden><h3>Meld je aan op de online versie</h3><p>Open Athlete Hub online om een account aan te maken of je aan te melden en je gegevens op je computer en gsm te gebruiken.</p><div class="actions"><a class="btn primary" href="https://cdb5.github.io/athlete-hub/?account=register#account" target="_blank" rel="noopener" data-account-start="register">Account aanmaken</a><a class="btn" href="https://cdb5.github.io/athlete-hub/?account=login#account" target="_blank" rel="noopener" data-account-start="login">Aanmelden</a></div></article>
   <div class="grid" id="account-signin" hidden>
     <article class="card"><h3>Aanmelden</h3><form id="account-login-form"><div class="fields">
       <label class="full">Gebruikersnaam of e-mail<input name="identifier" autocomplete="username" required maxlength="254" autocapitalize="none" spellcheck="false"></label>
       <label class="full">Wachtwoord<input name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
       </div><button class="btn primary form-actions" type="submit">Aanmelden</button></form>
       <details class="spaced"><summary>Wachtwoord vergeten?</summary><form id="account-forgot-form"><label>E-mailadres<input name="email" type="email" autocomplete="email" required maxlength="254"></label><button class="btn form-actions" type="submit">Herstellink aanvragen</button></form></details>
+      <button class="btn small spaced" type="button" id="account-email-help">E-mailadres nog niet bevestigd?</button>
     </article>
     <article class="card"><h3>Account maken</h3><p class="small muted">Je e-mail is nodig voor bevestiging en wachtwoordherstel. Daarna kun je met je gebruikersnaam aanmelden.</p><form id="account-register-form"><div class="fields">
       <label class="full">Gebruikersnaam<input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[a-zA-Z0-9_]{3,24}" autocapitalize="none" spellcheck="false"><small>3–24 letters, cijfers of underscores. Hoofdletters en kleine letters tellen als dezelfde naam.</small></label>
@@ -275,10 +272,9 @@
       </div><button class="btn primary form-actions" type="submit">Account maken</button></form>
     </article>
   </div>
-  <p class="status" id="account-message" role="status"></p>
   <div class="stack" id="account-signed-in" hidden>
     <article class="card"><div class="row between"><div><h3 id="account-name">Mijn account</h3><p id="account-sync-state"></p><p class="small muted" id="account-sync-detail"></p></div><div class="actions"><button class="btn primary" type="button" id="account-sync">Nu synchroniseren</button><button class="btn" type="button" id="account-signout">Afmelden</button></div></div><p class="small muted">Wijzigingen worden per item gesynchroniseerd. Bij een offline verbinding blijft je invoer in de cache van dit account wachten. Meld je op je andere toestel aan met hetzelfde account.</p></article>
-    <article class="card"><h3>Bestaande gegevens van dit toestel overnemen</h3><p>Je eerdere invoer zonder account blijft apart bewaard. Je kunt ontbrekende items aan dit account toevoegen. Accountitems met dezelfde sleutel blijven behouden. Voor een volledige vervanging gebruik je een back-up via Instellingen.</p><label class="row"><input id="account-confirm-local" type="checkbox">Deze lokale gegevens zijn van mij en mogen in dit account worden opgeslagen.</label><button class="btn form-actions" type="button" id="account-import-local">Lokale gegevens toevoegen</button></article>
+    <article class="card"><h3>Eerdere gegevens van dit toestel overnemen</h3><p>Invoer uit een vorige versie blijft apart bewaard. Je kunt ontbrekende items aan je account toevoegen. Accountitems met dezelfde sleutel blijven behouden. Voor een volledige vervanging gebruik je een back-up via Instellingen.</p><label class="row"><input id="account-confirm-local" type="checkbox">Deze eerdere gegevens zijn van mij en mogen in dit account worden opgeslagen.</label><button class="btn form-actions" type="button" id="account-import-local">Eerdere gegevens toevoegen</button></article>
     <div class="stack" id="account-conflicts"></div>
   </div>
   <article class="card" id="account-reset" hidden><h3>Nieuw wachtwoord</h3><form id="account-password-form"><div class="fields"><label>Nieuw wachtwoord<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><label>Herhaal wachtwoord<input name="repeat" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label></div><button class="btn primary form-actions" type="submit">Wachtwoord bewaren</button></form></article>
@@ -287,7 +283,7 @@
 <section class="view" id="privacy" hidden>
   <article class="card legal"><h2>Privacybeleid</h2>
     <p class="small muted">Laatst gewijzigd op <time datetime="2026-11-27">27 november 2026</time>.</p>
-    <h3>Je gegevens op dit toestel en in je account</h3><p>Athlete Hub bewaart lichaamsmetingen, tests, trainingssets, agenda-afspraken, herstelcheck-ins, apparaatkeuze, ingevoerde horlogemetingen, gekozen sessieaanpassingen, notities, maaltijden, recepten, producten, macrodoelen en afgevinkte sessies. Zonder aanmelding blijft de invoer lokaal in IndexedDB. Met een gekoppeld Supabase-project en een aangemeld account worden deze gegevens ook in de online PostgreSQL-databank opgeslagen en tussen je toestellen gesynchroniseerd. Elke gebruiker kan via de app uitsluitend zijn eigen records lezen en wijzigen. Bestaande lokale invoer wordt pas op jouw verzoek aan een account toegevoegd.</p>
+    <h3>Je gegevens op dit toestel en in je account</h3><p>Athlete Hub bewaart lichaamsmetingen, tests, trainingssets, agenda-afspraken, herstelcheck-ins, apparaatkeuze, ingevoerde horlogemetingen, gekozen sessieaanpassingen, notities, maaltijden, recepten, producten, macrodoelen en afgevinkte sessies. Een aangemeld account met bevestigd e-mailadres is vereist om de app te gebruiken. Gegevens staan in je online PostgreSQL-account en in een afzonderlijke IndexedDB-cache op dit toestel. Elke gebruiker kan via de app uitsluitend zijn eigen records lezen en wijzigen. Eerdere invoer uit een vorige versie wordt pas op jouw verzoek aan een account toegevoegd.</p>
     <h3>Account en lokale cache</h3><p>Supabase Auth verwerkt je e-mail, gebruikersnaam, wachtwoord en aanmeldsessies voor registratie, bevestiging en wachtwoordherstel. De app heeft geen eigen tabel met leesbare wachtwoorden. Een sessietoken wordt op dit toestel bewaard; trainingsgegevens blijven in een lokale cache per account staan, ook na afmelden. Websites op hetzelfde webadresdomein kunnen de browseropslag delen. Er zijn geen ingebouwde analytics. <a href="https://supabase.com/privacy">Supabase-privacyverklaring</a></p>
     <h3>Externe diensten</h3><p>Als de site op GitHub Pages staat, ontvangt GitHub technische gegevens bij het openen van de pagina, zoals je IP-adres. Bij een barcodezoekopdracht stuurt je browser de barcode naar Open Food Facts. Bij het lezen van een ticket downloadt je browser OCR-bestanden via jsDelivr en de OCR-bestandsservers. De ticket- en maaltijdfoto's worden op je toestel verwerkt. Externe links openen de gekozen dienst. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub-privacyverklaring</a> · <a href="https://world.openfoodfacts.org/privacy">Open Food Facts-privacybeleid</a> · <a href="https://www.jsdelivr.com/terms/privacy-policy">jsDelivr-privacybeleid</a></p>
     <h3>Exporteren en wissen</h3><p>Ga naar <button class="btn small" type="button" data-open="settings">Instellingen</button> om je gegevens als JSON te exporteren of te wissen. Bij een account worden verwijderingen online gesynchroniseerd; technische verwijdermarkeringen blijven voor de synchronisatie bewaard. Het wissen van trainingsgegevens verwijdert je aanmeldaccount niet. Vraag volledige accountverwijdering aan via het contactkanaal zonder persoonlijke gegevens in een publieke melding te plaatsen. Bewaar je back-up privé. Wis je de sitegegevens via je browser of verwijder je de webapp, dan kun je nog niet verzonden invoer kwijtraken.</p>
@@ -303,15 +299,23 @@
 </section>
 </main>
 <footer><div class="wrap footer-row"><span>Athlete Hub</span><div class="actions">
-  <a href="#privacy">Privacybeleid</a><a href="#terms">Gebruiksvoorwaarden</a><button class="btn small" id="copy-link" type="button" hidden>Kopieer link</button>
+  <a href="#privacy">Privacybeleid</a><a href="#terms">Gebruiksvoorwaarden</a><a href="#account" data-public-login>Aanmelden</a><button class="btn small" id="copy-link" type="button" hidden>Kopieer link</button>
 </div><p class="status" id="footer-status" role="status"></p></div></footer>
 <dialog id="account-start-dialog" aria-labelledby="account-start-title" aria-describedby="account-start-description">
   <div class="start-brand"><img src="./assets/logo-96.png" width="54" height="54" alt=""><span class="eyebrow">ATHLETE HUB</span></div>
   <h2 id="account-start-title">Jouw sport, op al je toestellen</h2>
-  <p id="account-start-description">Maak een account om je programma’s, voeding en trainingen te bewaren en op je computer en gsm te gebruiken.</p>
-  <div class="notice small" id="account-start-file-note" hidden><p>Je hebt het lokale bestand geopend. De accountknoppen openen de online versie in een nieuw tabblad.</p><p class="muted">Je lokale gegevens blijven hier staan. Neem eerdere invoer mee via een back-up in Instellingen.</p></div>
+  <p id="account-start-description">Meld je aan of maak een account om Athlete Hub te gebruiken. Je programma’s, voeding en trainingen worden aan jouw account gekoppeld.</p>
+  <div class="notice small" id="account-start-file-note" hidden><p>De accountknoppen openen de online versie in een nieuw tabblad. Meld je daar aan om Athlete Hub te gebruiken.</p></div>
   <div class="actions start-account-actions"><a class="btn primary" href="https://cdb5.github.io/athlete-hub/?account=register#account" target="_blank" rel="noopener" data-account-start="register" autofocus>Account aanmaken</a><a class="btn" href="https://cdb5.github.io/athlete-hub/?account=login#account" target="_blank" rel="noopener" data-account-start="login">Aanmelden</a></div>
-  <form method="dialog"><button class="btn small start-later" type="submit" value="local">Verder op dit toestel</button></form>
+  <div class="actions start-legal"><button class="link-button" type="button" data-auth-public="privacy">Privacybeleid</button><button class="link-button" type="button" data-auth-public="terms">Gebruiksvoorwaarden</button></div>
+</dialog>
+<dialog id="email-verification-dialog" aria-labelledby="verification-title" aria-describedby="verification-description">
+  <p class="eyebrow">BEVESTIG JE ACCOUNT</p><h2 id="verification-title">Controleer je e-mail</h2>
+  <p id="verification-description">Bevestig je e-mailadres voordat je Athlete Hub kunt gebruiken. Controleer de inbox van <strong id="verification-email-label"></strong> en ook je spamfolder.</p>
+  <ol class="steps"><li>Open de bevestigingsmail van Athlete Hub.</li><li>Klik op de link om je e-mailadres te bevestigen.</li><li>Keer terug en meld je aan met je gebruikersnaam of e-mail en wachtwoord.</li></ol>
+  <button class="btn primary spaced" id="verification-login" type="button">Naar aanmelden</button>
+  <details class="spaced"><summary>Geen mail ontvangen?</summary><form id="verification-email-form"><label>E-mailadres<input name="email" type="email" autocomplete="email" maxlength="254" required></label><button class="btn form-actions" type="submit">Bevestigingsmail opnieuw aanvragen</button></form></details>
+  <p class="status" id="verification-status" role="status" aria-live="polite"></p>
 </dialog>
 <dialog id="copy-dialog" aria-labelledby="copy-title"><h3 id="copy-title">Kopieer de tekst</h3><textarea class="copy-field" id="copy-text" aria-label="Te kopiëren tekst" readonly rows="5"></textarea><form method="dialog"><button class="btn small spaced">Sluiten</button></form></dialog>
 <dialog id="install-dialog" aria-labelledby="install-title"><h3 id="install-title">Installeer Athlete Hub</h3>

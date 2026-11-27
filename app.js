@@ -345,6 +345,7 @@ function session(w,d){
 }
 function showTab(tab,updateURL=true){
   if(tab==='tests')tab='about';
+  if(!canUseApp()&&!['account','privacy','terms'].includes(tab))tab='account';
   if(!$(tab)?.classList.contains('view'))return;
   if(updateURL&&location.hash!=='#'+tab)history.pushState(null,'','#'+tab);
   for(const view of all('section.view'))view.hidden=view.id!==tab;
@@ -430,7 +431,6 @@ function nextSession(){
 }
 function renderToday(){
   if($('today').hidden)return;
-  renderWelcome();
   const offset=planOffset(current), items=sortedEvents(current), g=goalFor(current), totals=totalsFor(current), kind=typeFor(current);
   const upcoming=nextSession();
   const dateLabel=date=>DAYS[weekday(date)]+' '+fmtDate(date);
@@ -1725,6 +1725,8 @@ const showLinkedTab=()=>{const tab=location.hash.slice(1);if(tab!=='main')showTa
 async function startApp(){
   await startStorage();
   await initAccounts();
+  if(!accountUser)discardAnonymousState();
+  updateAccountAccess();
   setProgramDate(true,false);
   syncExercises();
   readyToRender=true;

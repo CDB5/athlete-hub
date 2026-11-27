@@ -4,27 +4,43 @@ let accountClient=null,accountUser=null,accountInfo=null,accountError='',account
 let accountConfig=null,accountReady=false,accountStorageKey='',accountRecovery=false;
 let storageGeneration=0;
 const ATHLETE_PUBLIC_URL='https://cdb5.github.io/athlete-hub/';
+let verificationEmail='',verificationResendAfter=0;
+
+function verifiedUser(user){return !!user?.id&&!!user.email&&!!user.email_confirmed_at;}
+function canUseApp(){return verifiedUser(accountUser)&&database?.accountId===accountUser.id;}
+function updateAccountAccess(){
+  const allowed=canUseApp();
+  document.body.classList.toggle('auth-required',!allowed);
+  document.querySelector('.nav').hidden=!allowed;
+  for(const link of all('[data-public-login]'))link.hidden=allowed;
+}
+function discardAnonymousState(){
+  if(accountUser)return;
+  storageGeneration++;database?.close?.();database=undefined;state=emptyState();
+  updateAccountAccess();
+}
 
 function closeAccountStart(){
   const dialog=$('account-start-dialog');
   if(dialog.open)dialog.close();
 }
 function showAccountStart(){
-  if(accountUser)return;
+  if(verifiedUser(accountUser))return;
   $('account-start-file-note').hidden=location.protocol!=='file:';
   const dialog=$('account-start-dialog');
   if(!dialog.open)dialog.showModal();
 }
 function finishAccountStartup(){
   const intent=new URL(location.href).searchParams.get('account');
-  if(accountUser){closeAccountStart();return;}
+  updateAccountAccess();
+  if(canUseApp()){closeAccountStart();return;}
   if(['register','login'].includes(intent)&&location.protocol!=='file:'){
     closeAccountStart();showTab('account');
     if(accountConfig)focusInput(field($(intent==='register'?'account-register-form':'account-login-form'),intent==='register'?'username':'identifier'));
     const cleanURL=new URL(location.href);cleanURL.searchParams.delete('account');
     history.replaceState(null,'',cleanURL.href);
-  }else if(!['account','privacy','terms'].includes(document.querySelector('section.view:not([hidden])')?.id)){
-    showAccountStart();
+  }else if(!['account','privacy','terms'].includes(location.hash.slice(1))){
+    showTab('account',false);showAccountStart();
   }
 }
 
@@ -39,7 +55,7 @@ function configuredCloud(){
   }catch{throw Error('Controleer de publieke Supabase-project-URL en publishable key in cloud-config.js.');}
 }
 function accountSummaryText(){
-  if(!accountUser)return 'Op dit toestel';
+  if(!accountUser)return 'Aanmelden vereist';
   if(!navigator.onLine)return 'Offline · wijzigingen blijven op dit toestel';
   if(accountInfo?.conflicts.length)return accountInfo.conflicts.length+' verschil(len) bekijken';
   if(accountInfo?.pending)return accountInfo.pending+' wijziging(en) wachten op synchronisatie';
@@ -57,13 +73,10 @@ function hasPersonalData(){
       'sessionAdjustments','customExercises','freeTests','timeModes'].some(key=>Object.keys(state[key]).length>0)||
     Object.values(state.goalsDefined).some(Boolean);
 }
-function renderWelcome(){
-  $('today-welcome').hidden=!!accountUser;
-}
 function renderAccount(){
   if(!$('account'))return;
   $('account-short-status').textContent=accountUser?(accountUser.username||accountUser.user_metadata?.username||'Aangemeld')+' · '+accountSummaryText():
-    'Je gebruikt de app lokaal op dit toestel.';
+    'Meld je aan om Athlete Hub te gebruiken.';
   if($('account').hidden)return;
   $('account-setup').hidden=!!accountConfig;
   $('account-local-file').hidden=location.protocol!=='file:'||!!accountUser;
@@ -103,11 +116,13 @@ async function accountCredentials(userId){
   return {...accountConfig,token:data.session.access_token};
 }
 async function switchAccount(session,event){
-  const user=session?.user??null;
-  if(user)closeAccountStart();
+  const supplied=session?.user??null;
+  const user=verifiedUser(supplied)?supplied:null;
+  if(supplied&&!user)accountMessage('Bevestig eerst je e-mailadres om Athlete Hub te gebruiken.','error');
+  if(user){closeAccountStart();if($('email-verification-dialog').open)$('email-verification-dialog').close();}
   if(event==='PASSWORD_RECOVERY')accountRecovery=true;
   if(user?.id===accountUser?.id){
-    if(user)accountUser={...accountUser,...user};renderAccount();
+    if(user)accountUser={...accountUser,...user};updateAccountAccess();renderAccount();
     if(readyToRender&&event==='PASSWORD_RECOVERY')showTab('account');
     return;
   }
@@ -121,13 +136,11 @@ async function switchAccount(session,event){
     if(user){
       next=await AthleteCloudStore.open({userId:user.id,project:accountConfig.project,credentials:accountCredentials,
         onChanged:requestSync,onStatus:info=>{if(accountUser?.id===user.id)cloudStatus(info);}});
-    }else{
-      next=await AthleteStorage.open(()=>recordsFromState(readLegacy()),requestSync);
-      accountRecovery=false;
-    }
+    }else accountRecovery=false;
     previous?.close?.();database=next;storageFailed=false;
-    state=stateFromRecords(next.initial);delete next.initial;
-    if(readyToRender){loadStateViews();$('main').inert=false;}
+    state=next?stateFromRecords(next.initial):emptyState();if(next)delete next.initial;
+    updateAccountAccess();
+    if(readyToRender){loadStateViews();$('main').inert=false;if(!user)showTab('account',false);}
     if(user){
       void next.sync();
       void accountClient.from('profiles').select('username').eq('id',user.id).single().then(({data})=>{
@@ -138,6 +151,7 @@ async function switchAccount(session,event){
     accountError='Accountopslag kon niet worden geopend. Herlaad de app.';
     // Toon bij een mislukte wissel geen gegevens van het vorige account.
     database=undefined;state=emptyState();previous?.close?.();
+    updateAccountAccess();
     if(readyToRender){loadStateViews();$('main').inert=false;}
   }
   renderAccount();renderToday();
@@ -149,9 +163,29 @@ function queueAccount(session,event){
   });
   return accountSwitch;
 }
-function accountMessage(text){setStatus('account-message',text);}
+function typedAccountStatus(id,text,kind='info'){
+  const target=$(id);target.textContent=text;target.dataset.kind=kind;
+  target.classList.toggle('error',kind==='error');
+  target.setAttribute('role',kind==='error'?'alert':'status');
+  target.setAttribute('aria-live',kind==='error'?'assertive':'polite');
+  if(kind==='error'&&!target.closest('[hidden]'))target.scrollIntoView({block:'nearest'});
+}
+function accountMessage(text,kind='info'){typedAccountStatus('account-message',text,kind);}
+function authFailure(error,fallback){
+  if(error?.code==='email_address_not_authorized')return 'Naar dit e-mailadres kan nog geen bevestigingsmail worden gestuurd. Neem contact op met de beheerder.';
+  if(['over_email_send_rate_limit','over_request_rate_limit','too_many_requests'].includes(error?.code)||error?.status===429)
+    return 'Te veel aanvragen. Wacht even voordat je opnieuw probeert.';
+  return fallback;
+}
+function showEmailVerification(email=''){
+  closeAccountStart();verificationEmail=email;
+  field($('verification-email-form'),'email').value=email;
+  $('verification-email-label').textContent=email||'het e-mailadres van je account';
+  typedAccountStatus('verification-status','');
+  const dialog=$('email-verification-dialog');if(!dialog.open)dialog.showModal();
+}
 async function initAccounts(){
-  try{accountConfig=configuredCloud();}catch(error){accountError=error.message;accountMessage(error.message);}
+  try{accountConfig=configuredCloud();}catch(error){accountError=error.message;accountMessage(error.message,'error');}
   if(!accountConfig){accountReady=true;renderAccount();return;}
   accountStorageKey='athlete-hub:auth:'+accountConfig.project;
   accountClient=supabase.createClient(accountConfig.url,accountConfig.key,{
@@ -172,6 +206,7 @@ async function initAccounts(){
       await queueAccount(data.session,'INITIAL_SESSION');
     }catch{
       accountError='Je account kon nog niet worden gecontroleerd. Controleer je verbinding.';
+      accountMessage(accountError,'error');
       if(cached?.user?.id)await queueAccount(cached,'INITIAL_SESSION');
     }
   }
@@ -179,7 +214,7 @@ async function initAccounts(){
 }
 async function runAccountAction(form,action){
   const button=form.querySelector('button[type=submit]');button.disabled=true;accountMessage('Even wachten…');
-  try{await action();}catch(error){accountMessage(error.message||'Dit lukte niet. Probeer opnieuw.');}
+  try{await action();}catch(error){accountMessage(error.message||'Dit lukte niet. Probeer opnieuw.','error');}
   finally{button.disabled=false;for(const input of form.querySelectorAll('input[type=password]'))input.value='';}
 }
 async function registrationReady(){
@@ -209,7 +244,17 @@ function initAccountControls(){
         if(!response.ok)throw Error(response.status===404?'Aanmelden met gebruikersnaam is nog niet beschikbaar. Gebruik je e-mail.':data.error||'Aanmelden mislukt.');
         result=await accountClient.auth.setSession(data);
       }
-      if(result.error)throw Error('Aanmelden mislukt. Controleer je gegevens en bevestig je e-mail.');
+      if(result.error){
+        if(result.error.code==='email_not_confirmed'){
+          showEmailVerification(identifier.includes('@')?identifier:verificationEmail);
+          throw Error('Je e-mailadres is nog niet bevestigd. Open de bevestigingsmail.');
+        }
+        throw Error('Aanmelden mislukt. Controleer je gebruikersnaam of e-mail en je wachtwoord.');
+      }
+      if(!verifiedUser(result.data.session?.user)){
+        showEmailVerification(result.data.session?.user?.email||'');
+        throw Error('Bevestig eerst je e-mailadres om aan te melden.');
+      }
       accountClient.auth.startAutoRefresh();
       await queueAccount(result.data.session,'SIGNED_IN');accountMessage('Aangemeld. Je gegevens worden gesynchroniseerd.');
     });
@@ -222,16 +267,21 @@ function initAccountControls(){
       await registrationReady();
       const result=await accountClient.auth.signUp({email:value(register,'email').trim(),password,
         options:{data:{username:value(register,'username').trim().toLowerCase()},emailRedirectTo:new URL('./',location.href).href}});
-      if(result.error)throw Error('Registreren mislukt. Probeer een andere gebruikersnaam en controleer je e-mail en wachtwoord.');
-      if(result.data.session)await queueAccount(result.data.session,'SIGNED_IN');
-      accountMessage('Registratie verwerkt. Controleer je e-mail om je account te bevestigen en meld je daarna aan.');
+      if(result.error)throw Error(authFailure(result.error,'Registreren mislukt. Probeer een andere gebruikersnaam en controleer je e-mail en wachtwoord.'));
+      if(result.data.session&&verifiedUser(result.data.session.user)){
+        await queueAccount(result.data.session,'SIGNED_IN');accountMessage('Je account is aangemaakt en bevestigd.','success');
+      }else{
+        verificationResendAfter=Date.now()+60000;
+        accountMessage('Registratie verwerkt. Controleer je e-mail om je account te bevestigen en meld je daarna aan.','success');
+        showEmailVerification(value(register,'email').trim());
+      }
     });
   });
   $('account-forgot-form').addEventListener('submit',event=>{
     event.preventDefault();const form=event.target;if(!accountClient)return;
     void runAccountAction(form,async()=>{
       const {error}=await accountClient.auth.resetPasswordForEmail(value(form,'email').trim(),{redirectTo:new URL('./',location.href).href});
-      if(error)throw Error('Herstel aanvragen mislukt. Probeer later opnieuw.');
+      if(error)throw Error(authFailure(error,'Herstel aanvragen mislukt. Probeer later opnieuw.'));
       accountMessage('Als dit e-mailadres een account heeft, ontvang je een herstellink.');
     });
   });
@@ -249,11 +299,11 @@ function initAccountControls(){
     const {error}=await accountClient.auth.signOut({scope:'local'});
     if(error){accountClient.auth.stopAutoRefresh();localStorage.removeItem(accountStorageKey);}
     await queueAccount(null,'SIGNED_OUT');
-    accountMessage('Afgemeld op dit toestel. Eventuele niet-verzonden wijzigingen blijven in de cache van je account.');
+    accountMessage('Je bent afgemeld. Meld je opnieuw aan om Athlete Hub te gebruiken.');
   });
   $('account-sync').addEventListener('click',()=>void database?.sync?.());
   $('account-import-local').addEventListener('click',async()=>{
-    if(!database?.accountId||!$('account-confirm-local').checked){accountMessage('Bevestig eerst dat de lokale gegevens van jou zijn.');return;}
+    if(!canUseApp()||!$('account-confirm-local').checked){accountMessage('Bevestig eerst dat de lokale gegevens van jou zijn.','error');return;}
     const owner=database;let guest;
     try{
       guest=await AthleteStorage.open(()=>recordsFromState(readLegacy()),()=>{});
@@ -262,7 +312,7 @@ function initAccountControls(){
       if(owner!==database)throw Error('Het account is ondertussen gewijzigd.');
       await owner.write(additions);accountMessage(additions.length+' lokale items toegevoegd. Bestaande accountitems zijn behouden.');
       $('account-confirm-local').checked=false;
-    }catch(error){accountMessage(error.message||'Overnemen mislukt.');}finally{guest?.close?.();}
+    }catch(error){accountMessage(error.message||'Overnemen mislukt.','error');}finally{guest?.close?.();}
   });
   document.addEventListener('click',event=>{
     const start=event.target.closest('[data-account-start]');
@@ -279,10 +329,43 @@ function initAccountControls(){
       if(accountConfig&&!accountUser)focusInput(field(form,register?'username':'identifier'));
       return;
     }
+    const publicView=event.target.closest('[data-auth-public]');
+    if(publicView){closeAccountStart();showTab(publicView.dataset.authPublic);return;}
     const button=event.target.closest('[data-resolve]');if(!button||!database?.accountId)return;
     const conflict=accountInfo?.conflicts[Number(button.dataset.resolve)];if(!conflict)return;
     void database.resolveConflict([conflict.collection,conflict.scope,conflict.id],button.dataset.version);
   });
+  $('account-start-dialog').addEventListener('cancel',event=>{if(!canUseApp())event.preventDefault();});
+  $('account-email-help').addEventListener('click',()=>{
+    const identifier=value(login,'identifier').trim();showEmailVerification(identifier.includes('@')?identifier:verificationEmail);
+  });
+  $('verification-email-form').addEventListener('submit',async event=>{
+    event.preventDefault();if(!accountClient)return;
+    const form=event.target,button=form.querySelector('button[type=submit]');
+    const wait=Math.ceil((verificationResendAfter-Date.now())/1000);
+    if(wait>0){typedAccountStatus('verification-status','Wacht nog '+wait+' seconden voordat je opnieuw een mail aanvraagt.','error');return;}
+    button.disabled=true;typedAccountStatus('verification-status','Mail aanvragen…');
+    try{
+      const email=value(form,'email').trim();
+      const {error}=await accountClient.auth.resend({type:'signup',email,options:{emailRedirectTo:new URL('./',location.href).href}});
+      if(error)throw Error(authFailure(error,'De bevestigingsmail kon niet worden verstuurd. Probeer later opnieuw en controleer je e-mailadres.'));
+      verificationEmail=email;$('verification-email-label').textContent=email;
+      verificationResendAfter=Date.now()+60000;
+      typedAccountStatus('verification-status','Aanvraag verwerkt. Controleer je inbox en spamfolder.','success');
+    }catch(error){typedAccountStatus('verification-status',error.message,'error');}
+    finally{button.disabled=false;}
+  });
+  $('verification-login').addEventListener('click',()=>{
+    const email=value($('verification-email-form'),'email').trim();
+    $('email-verification-dialog').close();showTab('account');
+    if(email)field(login,'identifier').value=email;focusInput(field(login,'password'));
+  });
+  // Een verborgen formulier of een handmatige hashwijziging biedt geen gastmodus.
+  document.addEventListener('submit',event=>{
+    if(canUseApp()||event.target.closest('dialog')||event.target.id.startsWith('account-'))return;
+    event.preventDefault();event.stopImmediatePropagation();showTab('account');
+    accountMessage('Meld je eerst aan om Athlete Hub te gebruiken.','error');
+  },true);
   const synchronize=()=>{if(!document.hidden)void database?.sync?.();};
   setInterval(synchronize,30000);window.addEventListener('focus',synchronize);
   window.addEventListener('online',synchronize);document.addEventListener('visibilitychange',synchronize);

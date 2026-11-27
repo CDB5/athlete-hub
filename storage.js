@@ -219,6 +219,10 @@ function showStorageError(error) {
 }
 
 async function saveStatus(id, message, ...changes) {
+  if(!canUseApp()){
+    showTab('account');accountMessage('Meld je eerst aan om gegevens te bewaren.','error');
+    return;
+  }
   const owner=database, generation=storageGeneration;
   localChanges++;
   pendingWrites++;

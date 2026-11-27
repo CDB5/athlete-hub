@@ -22,6 +22,8 @@ Ga naar **Authentication → URL Configuration**:
 
 Laat bij de e-mailprovider **Confirm email** aanstaan en stel een minimale wachtwoordlengte van 12 tekens in. Bij registratie verzamelt Athlete Hub een gebruikersnaam, e-mail en wachtwoord. Het wachtwoord wordt door Supabase Auth verwerkt; de app heeft geen eigen wachtwoordtabel. Gebruikersnamen worden in kleine letters opgeslagen en zijn uniek.
 
+De app is alleen toegankelijk na aanmelding met een bevestigd e-mailadres. Er is geen gastmodus. De navigatie en formulieren voor trainings- en voedingsgegevens blijven afgesloten zonder dit account. Na registratie verschijnt een pop-up met de bevestigingsstappen, een resend-knop met wachttijd en een knop om naar aanmelden terug te gaan. Fouten bij aanmelden, registratie, wachtwoordherstel en het opnieuw sturen van een mail worden als rode alerts getoond.
+
 **Mailbezorging:** de ingebouwde Supabase-maildienst is bedoeld voor eerste tests met geautoriseerde teamadressen. Voor registratie en wachtwoordherstel voor andere gebruikers moet je een eigen SMTP-provider koppelen via **Authentication → SMTP Settings**. Zonder die instelling kan de code correct zijn terwijl bevestigingsmails naar andere personen geweigerd worden. Schakel e-mailbevestiging niet uit om dat te omzeilen. [Officiële SMTP-uitleg](https://supabase.com/docs/guides/auth/auth-smtp).
 
 ## 4. Serverfunctie voor gebruikersnamen
@@ -107,7 +109,7 @@ where r.collection = 'meta' and r.id = 'program' and not r.deleted;
 ## Synchronisatie en beheer
 
 - Een wijziging wordt eerst atomisch in de lokale accountcache en outbox opgeslagen. Daarna verstuurt de app haar naar PostgreSQL. De status geeft aan of er nog wijzigingen wachten.
-- Ieder account heeft een eigen IndexedDB-databank op het toestel. Zonder aanmelding blijft de oorspronkelijke lokale databank apart bestaan. Overnemen gebeurt alleen op verzoek.
+- Ieder account heeft een eigen IndexedDB-databank op het toestel. Zonder aanmelding zijn de apponderdelen afgesloten en wordt geen gastlogboek getoond. Een oorspronkelijke lokale databank uit een vorige versie blijft bewaard en kan na aanmelding op verzoek worden overgenomen.
 - Een `version` en `mutation_id` voorkomen stilzwijgend overschrijven bij wijzigingen aan hetzelfde item en maken het veilig een request opnieuw te sturen. Bij een verschil kies je de lokale of online versie. Losse items van verschillende toestellen kunnen samenkomen.
 - Verwijderingen blijven als technische markeringen bestaan zodat een oud offline toestel geen verwijderde gegevens terugzet. Een back-up terugzetten of trainingsgegevens wissen in een account wordt ook naar andere toestellen gesynchroniseerd.
 - De app synchroniseert na invoer, bij opnieuw openen/focus, na het terugkeren van internet en ongeveer iedere 30 seconden wanneer ze zichtbaar is. **Nu synchroniseren** start het direct. Een offline invoer is pas op andere toestellen beschikbaar nadat ze is verzonden.
