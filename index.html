@@ -26,7 +26,7 @@
   <article class="card welcome-card" id="today-welcome" hidden>
     <p class="eyebrow">WELKOM BIJ ATHLETE HUB</p><h2>Begin met jouw eigen sportplan</h2>
     <p>Maak een account om je programma’s, trainingen, producten en voeding bij te houden en op je computer en gsm te gebruiken. Je begint met een lege agenda en kiest zelf je programma.</p>
-    <div class="actions spaced"><button class="btn primary" type="button" data-account-start="register">Account aanmaken</button><button class="btn" type="button" data-account-start="login">Aanmelden</button><button class="btn small" type="button" data-open="training">Bekijk programma’s</button></div>
+    <div class="actions spaced"><a class="btn primary" href="https://cdb5.github.io/athlete-hub/?account=register#account" target="_blank" rel="noopener" data-account-start="register">Account aanmaken</a><a class="btn" href="https://cdb5.github.io/athlete-hub/?account=login#account" target="_blank" rel="noopener" data-account-start="login">Aanmelden</a><button class="btn small" type="button" data-open="training">Bekijk programma’s</button></div>
   </article>
   <article class="card now" id="today-next" aria-label="Volgende sessie"></article>
   <div class="actions quick-actions" id="today-actions" aria-label="Snel toevoegen"></div>
@@ -259,6 +259,7 @@
 <section class="view" id="account" hidden>
   <div><h2>Account en synchronisatie</h2><p class="muted">Gebruik hetzelfde account op je computer en gsm voor je producten, voeding, trainingen en herstelgegevens.</p></div>
   <article class="card notice" id="account-setup"><h3>Online accounts worden voorbereid</h3><p>De online databank moet nog aan deze website worden gekoppeld. Je kunt de app blijven gebruiken met de gegevens op dit toestel.</p></article>
+  <article class="card" id="account-local-file" hidden><h3>Gebruik je account op de online versie</h3><p>Je hebt Athlete Hub als lokaal bestand geopend. Open de online versie om je aan te melden en je gegevens op je computer en gsm te gebruiken.</p><div class="actions"><a class="btn primary" href="https://cdb5.github.io/athlete-hub/?account=register#account" target="_blank" rel="noopener" data-account-start="register">Account aanmaken</a><a class="btn" href="https://cdb5.github.io/athlete-hub/?account=login#account" target="_blank" rel="noopener" data-account-start="login">Aanmelden</a></div><p class="small muted spaced">Je eerdere lokale invoer blijft hier bewaard. Download via Instellingen een back-up en zet die terug in je online account als je ze wilt meenemen.</p><button class="btn small" type="button" data-open="settings">Lokale back-up maken</button></article>
   <div class="grid" id="account-signin" hidden>
     <article class="card"><h3>Aanmelden</h3><form id="account-login-form"><div class="fields">
       <label class="full">Gebruikersnaam of e-mail<input name="identifier" autocomplete="username" required maxlength="254" autocapitalize="none" spellcheck="false"></label>
@@ -304,6 +305,14 @@
 <footer><div class="wrap footer-row"><span>Athlete Hub</span><div class="actions">
   <a href="#privacy">Privacybeleid</a><a href="#terms">Gebruiksvoorwaarden</a><button class="btn small" id="copy-link" type="button" hidden>Kopieer link</button>
 </div><p class="status" id="footer-status" role="status"></p></div></footer>
+<dialog id="account-start-dialog" aria-labelledby="account-start-title" aria-describedby="account-start-description">
+  <div class="start-brand"><img src="./assets/logo-96.png" width="54" height="54" alt=""><span class="eyebrow">ATHLETE HUB</span></div>
+  <h2 id="account-start-title">Jouw sport, op al je toestellen</h2>
+  <p id="account-start-description">Maak een account om je programma’s, voeding en trainingen te bewaren en op je computer en gsm te gebruiken.</p>
+  <div class="notice small" id="account-start-file-note" hidden><p>Je hebt het lokale bestand geopend. De accountknoppen openen de online versie in een nieuw tabblad.</p><p class="muted">Je lokale gegevens blijven hier staan. Neem eerdere invoer mee via een back-up in Instellingen.</p></div>
+  <div class="actions start-account-actions"><a class="btn primary" href="https://cdb5.github.io/athlete-hub/?account=register#account" target="_blank" rel="noopener" data-account-start="register" autofocus>Account aanmaken</a><a class="btn" href="https://cdb5.github.io/athlete-hub/?account=login#account" target="_blank" rel="noopener" data-account-start="login">Aanmelden</a></div>
+  <form method="dialog"><button class="btn small start-later" type="submit" value="local">Verder op dit toestel</button></form>
+</dialog>
 <dialog id="copy-dialog" aria-labelledby="copy-title"><h3 id="copy-title">Kopieer de tekst</h3><textarea class="copy-field" id="copy-text" aria-label="Te kopiëren tekst" readonly rows="5"></textarea><form method="dialog"><button class="btn small spaced">Sluiten</button></form></dialog>
 <dialog id="install-dialog" aria-labelledby="install-title"><h3 id="install-title">Installeer Athlete Hub</h3>
   <p><strong>iPhone</strong> — Open de site in Safari. Tik op <strong>Delen</strong>, kies <strong>Zet op beginscherm</strong> en zet <strong>Open als webapp</strong> aan als die optie verschijnt.</p>

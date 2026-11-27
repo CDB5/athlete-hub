@@ -1733,6 +1733,7 @@ async function startApp(){
   const initialTab=accountRecovery?'account':location.hash.slice(1);
   performance.mark('athlete-hub-render-start');
   showTab(initialTab==='tests'?'about':$(initialTab)?.classList.contains('view')?initialTab:'today',false);
+  finishAccountStartup();
   performance.measure('athlete-hub-first-render','athlete-hub-render-start');
   window.addEventListener('hashchange',showLinkedTab);
   window.addEventListener('popstate',showLinkedTab);

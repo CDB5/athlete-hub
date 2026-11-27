@@ -342,6 +342,16 @@ details p:last-child { margin-bottom: 0; }
 dialog { width: min(calc(100% - 32px), 520px); max-height: calc(100svh - 40px); overflow: auto; padding: clamp(20px, 4vw, 30px); color: var(--text); background: #fff; border: 1px solid #82966c; border-radius: 18px; box-shadow: 0 24px 100px #0005; }
 dialog::backdrop { background: #0b130cbd; backdrop-filter: blur(3px); }
 dialog h2, dialog h3 { margin-bottom: 14px; }
+#account-start-dialog { width: min(calc(100% - 32px), 520px); }
+#account-start-dialog h2 { font-size: clamp(1.55rem, 4vw, 2rem); }
+.start-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.start-brand img { border-radius: 12px; }
+.start-brand .eyebrow { margin: 0; }
+.start-account-actions { margin-top: 22px; }
+.start-account-actions .btn { flex: 1 1 160px; text-align: center; }
+.start-later { margin-top: 16px; }
+#account-start-file-note { margin-top: 18px; }
+#account-start-file-note p:last-child { margin-bottom: 0; }
 #test-info, #test-result { width: min(calc(100% - 28px), 680px); }
 #test-info h2, #test-result h2 { font-size: 1.6rem; }
 #test-info .exercise { font-size: .9375rem; }

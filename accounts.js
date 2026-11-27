@@ -3,6 +3,30 @@
 let accountClient=null,accountUser=null,accountInfo=null,accountError='',accountSwitch=Promise.resolve();
 let accountConfig=null,accountReady=false,accountStorageKey='',accountRecovery=false;
 let storageGeneration=0;
+const ATHLETE_PUBLIC_URL='https://cdb5.github.io/athlete-hub/';
+
+function closeAccountStart(){
+  const dialog=$('account-start-dialog');
+  if(dialog.open)dialog.close();
+}
+function showAccountStart(){
+  if(accountUser)return;
+  $('account-start-file-note').hidden=location.protocol!=='file:';
+  const dialog=$('account-start-dialog');
+  if(!dialog.open)dialog.showModal();
+}
+function finishAccountStartup(){
+  const intent=new URL(location.href).searchParams.get('account');
+  if(accountUser){closeAccountStart();return;}
+  if(['register','login'].includes(intent)&&location.protocol!=='file:'){
+    closeAccountStart();showTab('account');
+    if(accountConfig)focusInput(field($(intent==='register'?'account-register-form':'account-login-form'),intent==='register'?'username':'identifier'));
+    const cleanURL=new URL(location.href);cleanURL.searchParams.delete('account');
+    history.replaceState(null,'',cleanURL.href);
+  }else if(!['account','privacy','terms'].includes(document.querySelector('section.view:not([hidden])')?.id)){
+    showAccountStart();
+  }
+}
 
 function configuredCloud(){
   const config=window.ATHLETE_CLOUD_CONFIG;
@@ -34,7 +58,7 @@ function hasPersonalData(){
     Object.values(state.goalsDefined).some(Boolean);
 }
 function renderWelcome(){
-  $('today-welcome').hidden=!!accountUser||hasPersonalData();
+  $('today-welcome').hidden=!!accountUser;
 }
 function renderAccount(){
   if(!$('account'))return;
@@ -42,7 +66,8 @@ function renderAccount(){
     'Je gebruikt de app lokaal op dit toestel.';
   if($('account').hidden)return;
   $('account-setup').hidden=!!accountConfig;
-  $('account-signin').hidden=!!accountUser||!accountConfig;
+  $('account-local-file').hidden=location.protocol!=='file:'||!!accountUser;
+  $('account-signin').hidden=!!accountUser||!accountConfig||location.protocol==='file:';
   $('account-signed-in').hidden=!accountUser;
   $('account-reset').hidden=!accountUser||!accountRecovery;
   $('account-name').textContent=accountUser?.username||accountUser?.user_metadata?.username||'Mijn account';
@@ -79,6 +104,7 @@ async function accountCredentials(userId){
 }
 async function switchAccount(session,event){
   const user=session?.user??null;
+  if(user)closeAccountStart();
   if(event==='PASSWORD_RECOVERY')accountRecovery=true;
   if(user?.id===accountUser?.id){
     if(user)accountUser={...accountUser,...user};renderAccount();
@@ -241,6 +267,12 @@ function initAccountControls(){
   document.addEventListener('click',event=>{
     const start=event.target.closest('[data-account-start]');
     if(start){
+      closeAccountStart();
+      if(location.protocol==='file:'){
+        if(start.tagName!=='A')window.open(ATHLETE_PUBLIC_URL+'?account='+start.dataset.accountStart+'#account','_blank','noopener');
+        return;
+      }
+      event.preventDefault();
       showTab('account');
       const register=start.dataset.accountStart==='register';
       const form=$(register?'account-register-form':'account-login-form');
@@ -254,4 +286,5 @@ function initAccountControls(){
   const synchronize=()=>{if(!document.hidden)void database?.sync?.();};
   setInterval(synchronize,30000);window.addEventListener('focus',synchronize);
   window.addEventListener('online',synchronize);document.addEventListener('visibilitychange',synchronize);
+  if(location.protocol==='file:')showAccountStart();
 }
