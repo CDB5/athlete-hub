@@ -1,9 +1,10 @@
 const root = new URL(self.registration.scope);
 const cachePrefix = 'athlete-hub:' + root.pathname + ':';
-const cacheName = cachePrefix + 'v7';
+const cacheName = cachePrefix + 'v8';
 const appPage = new URL('index.html', root).href;
 const files = [
   'index.html', 'styles.css', 'storage.js', 'products.js', 'recovery.js', 'app.js', 'manifest.webmanifest',
+  'cloud-config.js', 'accounts.js', 'cloud-store.js', 'vendor/supabase/supabase.js',
   'icon-192.png?v=2', 'icon-512.png?v=2',
   'assets/logo-96.png', 'assets/favicon-48.png', 'assets/apple-touch-icon.png',
   'assets/inter-latin.woff2',

@@ -349,7 +349,7 @@ function showTab(tab,updateURL=true){
   if(updateURL&&location.hash!=='#'+tab)history.pushState(null,'','#'+tab);
   for(const view of all('section.view'))view.hidden=view.id!==tab;
   const mobileMore=matchMedia('(max-width: 820px)').matches&&!['today','agenda','logbook','food'].includes(tab);
-  const navTab=mobileMore||['settings','privacy','terms'].includes(tab)?'more':tab;
+  const navTab=mobileMore||['settings','account','privacy','terms'].includes(tab)?'more':tab;
   for(const button of all('[data-tab]'))button.setAttribute('aria-pressed',String(button.dataset.tab===navTab));
   if(readyToRender)renderActiveView(tab);
   window.scrollTo(0,0);
@@ -424,7 +424,7 @@ function renderToday(){
   const upcoming=nextSession();
   const dateLabel=date=>DAYS[weekday(date)]+' '+fmtDate(date);
   const stage=offset!==null?'Vertical Jump · week '+(Math.floor(offset/7)+1):'';
-  $('today-date').innerHTML='<time class="muted" datetime="'+current+'">'+dateLabel(current)+'</time>'+(stage?'<span class="pill ok">'+stage+'</span>':'');
+  $('today-date').innerHTML='<time class="muted" datetime="'+current+'">'+dateLabel(current)+'</time>'+(stage?'<span class="pill ok">'+stage+'</span>':'')+accountBadge();
   $('today-next').innerHTML='<p class="eyebrow">VOLGENDE SESSIE</p>'+
     (upcoming?'<div class="row between"><div><h2>'+escapeHTML(upcoming.title)+'</h2><p class="small muted">'+dateLabel(upcoming.date)+(upcoming.time?' · '+upcoming.time:'')+'</p></div>'+
       (upcoming.program?'<button type="button" class="btn small" data-jump="'+upcoming.date+'">Bekijk sessie</button>':'<button type="button" class="btn small" data-open-agenda="'+upcoming.date+'">Open agenda</button>')+'</div>':
@@ -468,6 +468,8 @@ function renderActiveView(tab,fromSync=false){
       renderAbout();renderBody();renderTests();break;
     case 'library': renderLibrary();break;
     case 'recovery': if(first)loadCheckin(current); renderRecovery();break;
+    case 'account': renderAccount();break;
+    case 'settings': renderAccount();break;
   }
 }
 function refresh(){
@@ -972,7 +974,7 @@ $('backup-in').addEventListener('change',async event=>{
   if(!file)return;
   try{
     const next=validateState(JSON.parse(await file.text()));
-    if(!window.confirm('Vervang je huidige logboek door deze back-up?'))return;
+    if(!window.confirm(database?.accountId?'Vervang de trainingsgegevens in dit account door deze back-up? De wijzigingen worden ook naar je andere toestellen gesynchroniseerd.':'Vervang je huidige logboek door deze back-up?'))return;
     await replaceStoredState(next);
     loadStateViews();
     setStatus('backup-status','Back-up teruggezet.');
@@ -1399,11 +1401,12 @@ function loadStateViews(){
   refresh();
 }
 $('wipe-data').addEventListener('click',async ()=>{
-  if(!window.confirm('Alle lokale trainingsdata, recepten, metingen en inname wissen? Download eerst een back-up als je ze wilt bewaren.'))return;
+  const cloud=!!database?.accountId;
+  if(!window.confirm(cloud?'Alle trainingsgegevens in dit account wissen? De verwijderingen worden naar je andere toestellen gesynchroniseerd. Download eerst een back-up als je ze wilt bewaren.':'Alle lokale trainingsdata, recepten, metingen en inname wissen? Download eerst een back-up als je ze wilt bewaren.'))return;
   try {
     await replaceStoredState(emptyState());
     loadStateViews();
-    setStatus('backup-status','Je gegevens zijn gewist in deze browser.');
+    setStatus('backup-status',cloud?'Je accountgegevens zijn lokaal gewist. De verwijderingen worden gesynchroniseerd.':'Je gegevens zijn gewist in deze browser.');
   } catch(error) {
     showStorageError(error);
     setStatus('backup-status','De app kon de gegevens niet wissen. Je kunt de sitegegevens wissen in je browserinstellingen.');
@@ -1691,15 +1694,17 @@ exerciseForm.addEventListener('submit',event=>{
 field(exerciseForm,'type').innerHTML=Object.entries(CUSTOM_UNITS).map(([key,name])=>'<option value="'+key+'">'+name+'</option>').join('');
 initProducts();
 initRecovery();
+initAccountControls();
 const showLinkedTab=()=>{const tab=location.hash.slice(1);if(tab!=='main')showTab(tab||'today',false);};
 async function startApp(){
   await startStorage();
+  await initAccounts();
   setProgramDate(true,false);
   syncExercises();
   readyToRender=true;
   $('main').inert=false;
   $('startup-status').hidden=true;
-  const initialTab=location.hash.slice(1);
+  const initialTab=accountRecovery?'account':location.hash.slice(1);
   performance.mark('athlete-hub-render-start');
   showTab(initialTab==='tests'?'about':$(initialTab)?.classList.contains('view')?initialTab:'today',false);
   performance.measure('athlete-hub-first-render','athlete-hub-render-start');

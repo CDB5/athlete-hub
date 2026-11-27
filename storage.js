@@ -64,8 +64,9 @@ const AthleteStorage = (() => {
       };
     });
     const channel = typeof BroadcastChannel === 'function' ? new BroadcastChannel(CHANNEL) : null;
+    const onStorage=event=>{if(event.key===CHANNEL)onChanged();};
     if (channel) channel.onmessage = () => onChanged();
-    else window.addEventListener('storage', event => { if (event.key===CHANNEL) onChanged(); });
+    else window.addEventListener('storage',onStorage);
     function signal() {
       if (channel) channel.postMessage(true);
       else {
@@ -76,6 +77,7 @@ const AthleteStorage = (() => {
 
     return {
       initial,
+      close: () => { channel?.close();window.removeEventListener('storage',onStorage);db.close(); },
       read: () => transact(db,'readonly',(store,finish) => {
         const request = store.getAll();
         request.onsuccess = () => finish(request.result.filter(row => !isMarker(row)));
@@ -217,14 +219,16 @@ function showStorageError(error) {
 }
 
 async function saveStatus(id, message, ...changes) {
+  const owner=database, generation=storageGeneration;
   localChanges++;
   pendingWrites++;
   if (id) setStatus(id,'Opslaan…');
   try {
-    if (!database) throw new Error('IndexedDB is niet beschikbaar.');
-    await database.write(changes);
-    if (id) setStatus(id,message);
+    if (!owner) throw new Error('IndexedDB is niet beschikbaar.');
+    await owner.write(changes);
+    if (id&&generation===storageGeneration) setStatus(id,message);
   } catch (error) {
+    if(generation!==storageGeneration)return;
     storageFailed=true;
     showStorageError(error);
     if (id) setStatus(id,'Alleen tijdelijk bewaard. Exporteer eventueel een back-up via Instellingen.');
@@ -238,11 +242,14 @@ async function requestSync() {
   syncRequested=true;
   if (!database||syncRunning||pendingWrites||storageFailed||$('main').inert) return;
   syncRunning=true;
+  const initialGeneration=storageGeneration;
   try {
     while (syncRequested&&!pendingWrites&&!$('main').inert) {
       syncRequested=false;
       const version=localChanges;
-      const rows=await database.read();
+      const owner=database, generation=storageGeneration;
+      const rows=await owner.read();
+      if(generation!==storageGeneration||owner!==database)continue;
       if (version!==localChanges||pendingWrites||$('main').inert) {
         syncRequested=true;
         continue;
@@ -255,7 +262,7 @@ async function requestSync() {
       refresh();
     }
   } catch (error) {
-    showStorageError(error);
+    if(initialGeneration===storageGeneration)showStorageError(error);
   } finally {
     syncRunning=false;
   }

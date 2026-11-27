@@ -233,25 +233,54 @@
   <div class="more-grid">
     <button class="btn" type="button" data-open="training">Trainingsprogramma’s</button><button class="btn" type="button" data-open="library">Oefeningen en records</button>
     <button class="btn" type="button" data-open="about">Over mij</button><button class="btn" type="button" data-open="recovery">Herstel</button>
-    <button class="btn" type="button" data-open="settings">Instellingen</button><button class="btn install-action" type="button" data-install>Installeer Athlete Hub</button>
+    <button class="btn" type="button" data-open="account">Account en synchronisatie</button><button class="btn" type="button" data-open="settings">Instellingen</button><button class="btn install-action" type="button" data-install>Installeer Athlete Hub</button>
     <button class="btn" type="button" data-open="privacy">Privacybeleid</button><button class="btn" type="button" data-open="terms">Gebruiksvoorwaarden</button>
   </div>
 </section>
 <section class="view" id="settings" hidden>
   <div><h2>Instellingen</h2></div>
+  <article class="card"><h3>Account en synchronisatie</h3><p id="account-short-status"></p><button class="btn" type="button" data-open="account">Account openen</button></article>
   <article class="card" id="data-tools"><h3>Gegevens op dit toestel</h3>
-    <p>Je invoer wordt lokaal in deze browser of webapp bewaard. Via een JSON-back-up kun je je logboek meenemen naar een ander toestel of webadres. Een import vervangt je huidige gegevens op dit toestel.</p>
+    <p>Met een account bewaar je gegevens online en in de lokale cache van dat account. Zonder account blijft je invoer op dit toestel. Een JSON-back-up kun je bewaren of terugzetten. Bij een aangemeld account wordt een import ook naar je andere toestellen gesynchroniseerd.</p>
     <div class="actions"><button type="button" class="btn primary" id="backup-out">Back-up downloaden</button><label>Back-up terugzetten<input id="backup-in" type="file" accept="application/json,.json"></label><button type="button" class="btn small danger" id="wipe-data">Gegevens wissen</button></div>
     <p class="status" id="backup-status" role="status"></p>
   </article>
   <article class="card"><h3>Verhuizen naar een ander webadres</h3><p>Download eerst een back-up op het oude adres. Open daarna de site op het nieuwe adres en zet de back-up hier terug. Doe dit op elk toestel met lokale invoer die je wilt meenemen.</p></article>
 </section>
+<section class="view" id="account" hidden>
+  <div><h2>Account en synchronisatie</h2><p class="muted">Gebruik hetzelfde account op je computer en gsm voor je producten, voeding, trainingen en herstelgegevens.</p></div>
+  <article class="card notice" id="account-setup"><h3>Online accounts worden voorbereid</h3><p>De online databank moet nog aan deze website worden gekoppeld. Je kunt de app blijven gebruiken met de gegevens op dit toestel.</p></article>
+  <div class="grid" id="account-signin" hidden>
+    <article class="card"><h3>Aanmelden</h3><form id="account-login-form"><div class="fields">
+      <label class="full">Gebruikersnaam of e-mail<input name="identifier" autocomplete="username" required maxlength="254" autocapitalize="none" spellcheck="false"></label>
+      <label class="full">Wachtwoord<input name="password" type="password" autocomplete="current-password" required maxlength="256"></label>
+      </div><button class="btn primary form-actions" type="submit">Aanmelden</button></form>
+      <details class="spaced"><summary>Wachtwoord vergeten?</summary><form id="account-forgot-form"><label>E-mailadres<input name="email" type="email" autocomplete="email" required maxlength="254"></label><button class="btn form-actions" type="submit">Herstellink aanvragen</button></form></details>
+    </article>
+    <article class="card"><h3>Account maken</h3><p class="small muted">Je e-mail is nodig voor bevestiging en wachtwoordherstel. Daarna kun je met je gebruikersnaam aanmelden.</p><form id="account-register-form"><div class="fields">
+      <label class="full">Gebruikersnaam<input name="username" autocomplete="username" required minlength="3" maxlength="24" pattern="[a-zA-Z0-9_]{3,24}" autocapitalize="none" spellcheck="false"><small>3–24 letters, cijfers of underscores. Hoofdletters en kleine letters tellen als dezelfde naam.</small></label>
+      <label class="full">E-mailadres<input name="email" type="email" autocomplete="email" required maxlength="254"></label>
+      <label class="full">Wachtwoord<input name="password" type="password" autocomplete="new-password" required minlength="12" maxlength="128"><small>Minstens 12 tekens.</small></label>
+      <label class="full">Herhaal wachtwoord<input name="repeat" type="password" autocomplete="new-password" required minlength="12" maxlength="128"></label>
+      </div><button class="btn primary form-actions" type="submit">Account maken</button></form>
+    </article>
+  </div>
+  <p class="status" id="account-message" role="status"></p>
+  <div class="stack" id="account-signed-in" hidden>
+    <article class="card"><div class="row between"><div><h3 id="account-name">Mijn account</h3><p id="account-sync-state"></p><p class="small muted" id="account-sync-detail"></p></div><div class="actions"><button class="btn primary" type="button" id="account-sync">Nu synchroniseren</button><button class="btn" type="button" id="account-signout">Afmelden</button></div></div><p class="small muted">Wijzigingen worden per item gesynchroniseerd. Bij een offline verbinding blijft je invoer in de cache van dit account wachten. Meld je op je andere toestel aan met hetzelfde account.</p></article>
+    <article class="card"><h3>Bestaande gegevens van dit toestel overnemen</h3><p>Je eerdere invoer zonder account blijft apart bewaard. Je kunt ontbrekende items aan dit account toevoegen. Accountitems met dezelfde sleutel blijven behouden. Voor een volledige vervanging gebruik je een back-up via Instellingen.</p><label class="row"><input id="account-confirm-local" type="checkbox">Deze lokale gegevens zijn van mij en mogen in dit account worden opgeslagen.</label><button class="btn form-actions" type="button" id="account-import-local">Lokale gegevens toevoegen</button></article>
+    <div class="stack" id="account-conflicts"></div>
+  </div>
+  <article class="card" id="account-reset" hidden><h3>Nieuw wachtwoord</h3><form id="account-password-form"><div class="fields"><label>Nieuw wachtwoord<input name="password" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label><label>Herhaal wachtwoord<input name="repeat" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label></div><button class="btn primary form-actions" type="submit">Wachtwoord bewaren</button></form></article>
+  <article class="card"><h3>Gegevens en gedeelde toestellen</h3><p>De app bewaart een lokale cache per account. Afmelden stopt de toegang via je sessie op dit toestel; de cache blijft beschikbaar voor een volgende aanmelding en voor nog niet verzonden wijzigingen. Gebruik op een gedeeld toestel een eigen browserprofiel en wis de sitegegevens als je ook de lokale caches wilt verwijderen. Bewaar eerst eventuele niet-verzonden wijzigingen als back-up.</p><button class="btn small" type="button" data-open="settings">Back-up en gegevensbeheer</button></article>
+</section>
 <section class="view" id="privacy" hidden>
   <article class="card legal"><h2>Privacybeleid</h2>
     <p class="small muted">Laatst gewijzigd op <time datetime="2026-11-27">27 november 2026</time>.</p>
-    <h3>Je gegevens op dit toestel</h3><p>Athlete Hub bewaart lichaamsmetingen, tests, trainingssets, agenda-afspraken, herstelcheck-ins, apparaatkeuze, ingevoerde horlogemetingen, gekozen sessieaanpassingen, notities, maaltijden, recepten, bewaarde producten, macrodoelen en afgevinkte sessies lokaal in IndexedDB. De site heeft geen account, serverdatabank of ingebouwde analytics. Je gegevens worden niet tussen toestellen gesynchroniseerd. Websites op hetzelfde webadresdomein kunnen de browseropslag delen.</p>
+    <h3>Je gegevens op dit toestel en in je account</h3><p>Athlete Hub bewaart lichaamsmetingen, tests, trainingssets, agenda-afspraken, herstelcheck-ins, apparaatkeuze, ingevoerde horlogemetingen, gekozen sessieaanpassingen, notities, maaltijden, recepten, producten, macrodoelen en afgevinkte sessies. Zonder aanmelding blijft de invoer lokaal in IndexedDB. Met een gekoppeld Supabase-project en een aangemeld account worden deze gegevens ook in de online PostgreSQL-databank opgeslagen en tussen je toestellen gesynchroniseerd. Elke gebruiker kan via de app uitsluitend zijn eigen records lezen en wijzigen. Bestaande lokale invoer wordt pas op jouw verzoek aan een account toegevoegd.</p>
+    <h3>Account en lokale cache</h3><p>Supabase Auth verwerkt je e-mail, gebruikersnaam, wachtwoord en aanmeldsessies voor registratie, bevestiging en wachtwoordherstel. De app heeft geen eigen tabel met leesbare wachtwoorden. Een sessietoken wordt op dit toestel bewaard; trainingsgegevens blijven in een lokale cache per account staan, ook na afmelden. Websites op hetzelfde webadresdomein kunnen de browseropslag delen. Er zijn geen ingebouwde analytics. <a href="https://supabase.com/privacy">Supabase-privacyverklaring</a></p>
     <h3>Externe diensten</h3><p>Als de site op GitHub Pages staat, ontvangt GitHub technische gegevens bij het openen van de pagina, zoals je IP-adres. Bij een barcodezoekopdracht stuurt je browser de barcode naar Open Food Facts. Bij het lezen van een ticket downloadt je browser OCR-bestanden via jsDelivr en de OCR-bestandsservers. De ticket- en maaltijdfoto's worden op je toestel verwerkt. Externe links openen de gekozen dienst. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub-privacyverklaring</a> · <a href="https://world.openfoodfacts.org/privacy">Open Food Facts-privacybeleid</a> · <a href="https://www.jsdelivr.com/terms/privacy-policy">jsDelivr-privacybeleid</a></p>
-    <h3>Exporteren en wissen</h3><p>Ga naar <button class="btn small" type="button" data-open="settings">Instellingen</button> om je gegevens als JSON te exporteren of te wissen. Bewaar je back-up privé. Wis je de sitegegevens via je browser of verwijder je de webapp, dan kun je lokale invoer kwijtraken.</p>
+    <h3>Exporteren en wissen</h3><p>Ga naar <button class="btn small" type="button" data-open="settings">Instellingen</button> om je gegevens als JSON te exporteren of te wissen. Bij een account worden verwijderingen online gesynchroniseerd; technische verwijdermarkeringen blijven voor de synchronisatie bewaard. Het wissen van trainingsgegevens verwijdert je aanmeldaccount niet. Vraag volledige accountverwijdering aan via het contactkanaal zonder persoonlijke gegevens in een publieke melding te plaatsen. Bewaar je back-up privé. Wis je de sitegegevens via je browser of verwijder je de webapp, dan kun je nog niet verzonden invoer kwijtraken.</p>
     <h3>Contact</h3><p>Meld vragen over de app of dit privacybeleid via <a href="https://github.com/CDB5/athlete-hub/issues">GitHub Issues</a>. De meldingen zijn publiek. Houd je logboek, lichaamsmetingen en back-ups privé.</p>
   </article>
 </section>
@@ -259,7 +288,7 @@
   <article class="card legal"><h2>Gebruiksvoorwaarden</h2>
     <h3>Waarvoor Athlete Hub dient</h3><p>Athlete Hub is een trainings- en voedingsdagboek. Het schema en de berekeningen bieden algemene sportinformatie. Stem belasting en oefenkeuze af op je herstel, techniek en eventuele klachten. Bespreek terugkerende of toenemende pijn met een bevoegde zorgverlener.</p>
     <h3>Berekeningen en gegevens</h3><p>Geschatte 1RM's zijn benaderingen op basis van gelogde sets. Voedingswaarden kunnen afwijken door porties, etiketten of databronnen. Controleer eenheden en ingevoerde waarden. Externe functies zoals barcodezoekopdrachten en OCR zijn afhankelijk van de beschikbaarheid van hun diensten.</p>
-    <h3>Openbare link en back-ups</h3><p>Iedereen met de publieke link kan het schema openen. Je trainingslogboek en recepten zitten in je browser. Maak af en toe een back-up als je je gegevens wilt meenemen of herstellen.</p>
+    <h3>Openbare link en back-ups</h3><p>Iedereen met de publieke link kan de app openen. Je eigen gegevens zitten in de browser en, bij een aangemeld account met gekoppelde databank, ook in je online account. Maak af en toe een back-up om je gegevens te kunnen herstellen.</p>
   </article>
 </section>
 </main>
@@ -281,9 +310,13 @@
   <div class="exercise"><div><b>3 · Standing triple jump · optioneel</b><small>Start met twee voeten achter de lijn. Land rechts, links, daarna op twee voeten. Houd de volgorde gelijk. Meet van de startlijn tot de achterste hiel bij een stabiele eindlanding. Doe dit alleen waar de volledige afstand vrij is.</small></div><div class="dose">2 reeksen<small>2–3 min rust</small></div></div></dialog>
 <dialog id="test-result" aria-labelledby="test-result-title"><div class="row between"><h2 id="test-result-title">Sprongresultaat</h2><form method="dialog"><button class="btn small" type="submit">Sluiten</button></form></div><p id="test-result-context" class="muted"></p>
   <form id="test-form"><div class="fields"><input id="test-key" type="hidden" value="free"><label>Standing (cm)<input name="standing" type="number" min="0" max="200" step="0.1" inputmode="decimal"></label><label>Running (cm)<input name="running" type="number" min="0" max="200" step="0.1" inputmode="decimal"></label><label>Triple jump (m)<input name="triple" type="number" min="0" max="18" step="0.01" inputmode="decimal"></label><label>Testdatum<input name="date" type="date" required></label><label class="full">Notitie<textarea name="note" maxlength="350" placeholder="Afzetstijl, ondergrond, vermoeidheid"></textarea></label></div><button class="btn primary form-actions" type="submit">Resultaat bewaren</button></form><p class="status" id="test-status" role="status"></p></dialog>
+<script src="./cloud-config.js" defer></script>
+<script src="./vendor/supabase/supabase.js" defer></script>
+<script src="./cloud-store.js" defer></script>
 <script src="./storage.js" defer></script>
 <script src="./products.js" defer></script>
 <script src="./recovery.js" defer></script>
+<script src="./accounts.js" defer></script>
 <script src="./app.js" defer></script>
 </body>
 </html>
