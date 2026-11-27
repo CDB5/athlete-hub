@@ -50,23 +50,50 @@
   </article>
 </section>
 <section class="view" id="recovery" hidden>
-  <div><h2>Herstel</h2><p class="muted">Volg je slaap en hoe fris je benen aanvoelen naast je sportweek.</p></div>
+  <div><h2>Herstel</h2><p class="muted">Combineer je eigen gevoel met gegevens van je horloge en bekijk het advies voor je training.</p></div>
+  <article class="card recovery-device-card"><div class="fields"><label>Mijn apparaat<select id="recovery-device"><option value="">Kies een apparaat</option><option value="polar-pacer-pro">Polar Pacer Pro</option></select></label>
+    <div class="device-description"><h3>Gegevens uit Polar Flow</h3><p class="small muted">Neem de waarden van je horloge of de Flow-app over. Kies bij de datum de ochtend waarop je wakker werd. Je bewaart de metingen met je check-in.</p></div></div><p class="status" id="recovery-device-status" role="status"></p></article>
   <div class="grid">
     <article class="card"><h3>Dagelijkse check-in</h3>
       <form id="recovery-form">
         <div class="fields">
           <label>Datum<input type="date" name="date" required></label>
-          <label>Slaap (uur)<input name="sleep" type="number" min="0" max="24" step="0.25" inputmode="decimal" placeholder="7,5"></label>
+          <label>Slaap (uur)<input name="sleep" type="number" min="0" max="24" step="0.01" inputmode="decimal" placeholder="7,5"><small>7 uur 30 min = 7,5 uur.</small></label>
+          <label>Eigen slaapkwaliteit<select name="quality"><option value="">Kies je score</option><option value="1">1 · Zeer slecht</option><option value="2">2 · Slecht</option><option value="3">3 · Redelijk</option><option value="4">4 · Goed</option><option value="5">5 · Zeer goed</option></select></label>
           <label>Frisheid<select name="energy"><option value="">Kies je score</option><option value="1">1 · Erg vermoeid</option><option value="2">2 · Moe</option><option value="3">3 · Redelijk</option><option value="4">4 · Fris</option><option value="5">5 · Zeer fris</option></select></label>
           <label>Benengevoel<select name="legs"><option value="">Kies je score</option><option value="1">1 · Zeer zwaar</option><option value="2">2 · Zwaar</option><option value="3">3 · Neutraal</option><option value="4">4 · Fris</option><option value="5">5 · Veerkrachtig</option></select></label>
           <label class="full">Notitie<textarea name="note" maxlength="400" placeholder="Bijv. late training of opvallend zware benen"></textarea></label>
+        </div>
+        <div id="polar-fields" hidden class="polar-fields subline"><h3>Polar Pacer Pro</h3><p class="small muted" id="polar-source-note">Vul alleen beschikbare waarden in. De nachtelijke hartslag en HRV staan bij ANS charge in Flow en zijn gemiddelden van de eerste vier uur slaap.</p>
+          <div class="fields">
+            <label>Rusthartslag ochtend (bpm)<input name="restingHR" type="number" min="20" max="220" step="0.1" inputmode="decimal"><small>Meet steeds op hetzelfde moment, in dezelfde houding en vóór inspanning.</small></label>
+            <label>Hartslag eerste 4 uur slaap (bpm)<input name="nightHR" type="number" min="20" max="220" step="0.1" inputmode="decimal"><small>Neem het 4-uursgemiddelde uit ANS charge over.</small></label>
+            <label>HRV eerste 4 uur slaap (ms)<input name="hrv" type="number" min="1" max="1000" step="0.1" inputmode="decimal"></label>
+            <label>Ademfrequentie eerste 4 uur (/min)<input name="breathing" type="number" min="3" max="60" step="0.1" inputmode="decimal"></label>
+            <label>Polar-slaapscore (1–100)<input name="sleepScore" type="number" min="1" max="100" step="0.1" inputmode="decimal"></label>
+            <label>ANS charge (−10 tot +10)<input name="ansCharge" type="number" min="-10" max="10" step="0.1" inputmode="decimal"></label>
+            <label class="full">Nightly Recharge<select name="nightly"><option value="">Niet ingevuld</option><option value="very_poor">Zeer slecht · Very poor</option><option value="poor">Slecht · Poor</option><option value="compromised">Verminderd · Compromised</option><option value="ok">OK</option><option value="good">Goed · Good</option><option value="very_good">Zeer goed · Very good</option></select></label>
+            <label>In slaap gevallen<input name="sleepStart" type="time"></label><label>Ontwaakt<input name="wakeTime" type="time"></label>
+          </div>
         </div>
         <div class="actions form-actions"><button class="btn primary" type="submit">Check-in bewaren</button><button class="btn danger" id="recovery-delete" type="button" hidden>Check-in wissen</button></div>
         <p class="status" id="recovery-status" role="status"></p>
       </form>
     </article>
-    <article class="card"><h3>Recente check-ins</h3><div class="list" id="recovery-history"></div></article>
+    <div class="stack">
+      <article class="card"><p class="eyebrow" id="recovery-advice-date"></p><div id="recovery-advice"></div><div class="actions spaced" id="recovery-session-link"></div></article>
+      <article class="card"><h3>Je eigen referentie</h3><p class="small muted">Vergelijking met minstens 7 eerdere metingen binnen de voorgaande 28 dagen. Ochtend-rusthartslag en nachtelijke HRV worden ieder met hun eigen reeks vergeleken.</p><div class="scroll" id="recovery-baseline"></div></article>
+    </div>
   </div>
+  <article class="card"><h3>Recente check-ins</h3><div class="list" id="recovery-history"></div></article>
+  <article class="card"><details><summary>Hoe het trainingsadvies tot stand komt</summary>
+    <p>De app kijkt naar drie groepen signalen. Je slaapduur en eigen slaapkwaliteit vormen één groep, je frisheid en benengevoel een tweede, en Polar Nightly Recharge en persoonlijke hartslagtrends een derde.</p>
+    <p>Bij minder dan 7 uur slaap, een eigen kwaliteitsscore van 1–2/5, zware benen of een ongunstige Nightly Recharge krijg je een opwarmcheck. Minder dan 6 uur slaap, een frisheids- of benenscore van 1/5 of vermoeidheid samen met een slaap- of horlogesignaal geeft een lichter voorstel.</p>
+    <p>Na 7 eerdere metingen vergelijkt de app je ochtend-rusthartslag en nachtelijke HRV met hun mediaan over de vorige 28 dagen. Een stijging van minstens 5 bpm of een HRV-daling van minstens 20% is een horlogesignaal. Slaap en de daarvan afhankelijke Nightly Recharge tellen samen pas voor een lichter voorstel als je ook vermoeidheid meldt.</p>
+    <p>De afkapwaarden en de lichte trainingsvariant zijn gekozen coachingsregels. De wetenschappelijke onderbouwing betreft vooral het volgen van persoonlijke trends en het combineren van metingen met je eigen gevoel. De Polar-slaapscore, ANS charge, nachtelijke hartslag en ademhaling worden ook bewaard als context.</p>
+    <p>Bij een lichte gymsessie vervalt één set per oefening, met minimaal één set. Nordic curls en reverse lunges vervallen. Aanloopsprongen gaan naar 85–90% en krachtwerk naar maximaal RPE 6–7; al lichter geplande oefeningen blijven licht. Je kiest die variant zelf bij de gymsessie van het Vertical Jump-programma op maandag of dinsdag. Controleer daarbij je techniek, snelheid en herstel in de opwarming.</p>
+    <p class="small"><a href="https://support.polar.com/e_manuals/pacer-pro/polar-pacer-pro-user-manual-english/nightly-recharge.htm">Polar Pacer Pro-handleiding</a> · <a href="https://bjsm.bmj.com/content/55/7/356">Slaapconsensus voor sporters</a> · <a href="https://pubmed.ncbi.nlm.nih.gov/34940511/">Onderzoek naar HRV-gestuurde training</a> · <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC4789708/">Onderzoek naar subjectieve herstelmetingen</a></p>
+  </details></article>
 </section>
 <section class="view" id="training" hidden>
   <div><h2>Trainingsprogramma’s</h2><p class="muted">Kies een week en dag om het programma te bekijken.</p></div>
@@ -221,8 +248,8 @@
 </section>
 <section class="view" id="privacy" hidden>
   <article class="card legal"><h2>Privacybeleid</h2>
-    <p class="small muted">Laatst gewijzigd op <time datetime="2026-11-26">26 november 2026</time>.</p>
-    <h3>Je gegevens op dit toestel</h3><p>Athlete Hub bewaart lichaamsmetingen, tests, trainingssets, agenda-afspraken, herstelcheck-ins, notities, maaltijden, recepten, bewaarde producten, macrodoelen en afgevinkte sessies lokaal in IndexedDB. De site heeft geen account, serverdatabank of ingebouwde analytics. Je gegevens worden niet tussen toestellen gesynchroniseerd. Websites op hetzelfde webadresdomein kunnen de browseropslag delen.</p>
+    <p class="small muted">Laatst gewijzigd op <time datetime="2026-11-27">27 november 2026</time>.</p>
+    <h3>Je gegevens op dit toestel</h3><p>Athlete Hub bewaart lichaamsmetingen, tests, trainingssets, agenda-afspraken, herstelcheck-ins, apparaatkeuze, ingevoerde horlogemetingen, gekozen sessieaanpassingen, notities, maaltijden, recepten, bewaarde producten, macrodoelen en afgevinkte sessies lokaal in IndexedDB. De site heeft geen account, serverdatabank of ingebouwde analytics. Je gegevens worden niet tussen toestellen gesynchroniseerd. Websites op hetzelfde webadresdomein kunnen de browseropslag delen.</p>
     <h3>Externe diensten</h3><p>Als de site op GitHub Pages staat, ontvangt GitHub technische gegevens bij het openen van de pagina, zoals je IP-adres. Bij een barcodezoekopdracht stuurt je browser de barcode naar Open Food Facts. Bij het lezen van een ticket downloadt je browser OCR-bestanden via jsDelivr en de OCR-bestandsservers. De ticket- en maaltijdfoto's worden op je toestel verwerkt. Externe links openen de gekozen dienst. <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub-privacyverklaring</a> · <a href="https://world.openfoodfacts.org/privacy">Open Food Facts-privacybeleid</a> · <a href="https://www.jsdelivr.com/terms/privacy-policy">jsDelivr-privacybeleid</a></p>
     <h3>Exporteren en wissen</h3><p>Ga naar <button class="btn small" type="button" data-open="settings">Instellingen</button> om je gegevens als JSON te exporteren of te wissen. Bewaar je back-up privé. Wis je de sitegegevens via je browser of verwijder je de webapp, dan kun je lokale invoer kwijtraken.</p>
     <h3>Contact</h3><p>Meld vragen over de app of dit privacybeleid via <a href="https://github.com/CDB5/athlete-hub/issues">GitHub Issues</a>. De meldingen zijn publiek. Houd je logboek, lichaamsmetingen en back-ups privé.</p>
@@ -256,6 +283,7 @@
   <form id="test-form"><div class="fields"><input id="test-key" type="hidden" value="free"><label>Standing (cm)<input name="standing" type="number" min="0" max="200" step="0.1" inputmode="decimal"></label><label>Running (cm)<input name="running" type="number" min="0" max="200" step="0.1" inputmode="decimal"></label><label>Triple jump (m)<input name="triple" type="number" min="0" max="18" step="0.01" inputmode="decimal"></label><label>Testdatum<input name="date" type="date" required></label><label class="full">Notitie<textarea name="note" maxlength="350" placeholder="Afzetstijl, ondergrond, vermoeidheid"></textarea></label></div><button class="btn primary form-actions" type="submit">Resultaat bewaren</button></form><p class="status" id="test-status" role="status"></p></dialog>
 <script src="./storage.js" defer></script>
 <script src="./products.js" defer></script>
+<script src="./recovery.js" defer></script>
 <script src="./app.js" defer></script>
 </body>
 </html>

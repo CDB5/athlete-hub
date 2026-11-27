@@ -86,7 +86,7 @@ function cleanSet(item,registry=exerciseById){
 function plannedFor(date){
   const i=delta(date,START), d=weekday(date);
   if(i<0||i>=70)return {title:'Vrij logboek',exercises:[]};
-  const scheduled=session(Math.floor(i/7),d);
+  const scheduled=sessionForDate(date);
   const ids=scheduled.moves.flatMap(([name])=>name==='Nulmeting'?['standing','running','triple']:(exerciseByName[name]?[exerciseByName[name].id]:[]));
   if(i===65)ids.push('standing','running','triple');
   if(d===2||d===4)ids.push('volleyball');
@@ -122,8 +122,8 @@ function cleanEvent(item){
 function cleanCheck(item){
   if(!item)return null;
   const score=n=>Number.isInteger(n)&&bounded(n,1,5)?n:null;
-  const clean={sleep:bounded(item.sleep,0,24)?item.sleep:null,energy:score(item.energy),legs:score(item.legs),note:String(item.note??'').slice(0,400)};
-  return clean.sleep!==null||clean.energy!==null||clean.legs!==null||clean.note?clean:null;
+  const clean={sleep:bounded(item.sleep,0,24)?item.sleep:null,quality:score(item.quality),energy:score(item.energy),legs:score(item.legs),note:String(item.note??'').slice(0,400)};
+  return clean.sleep!==null||clean.quality!==null||clean.energy!==null||clean.legs!==null||clean.note?clean:null;
 }
 function cleanCustomExercise(item){
   if(!item||!/^custom-[a-z0-9-]+$/.test(item.id)||typeof item.name!=='string'||!item.name.trim()||
@@ -219,7 +219,7 @@ const workoutDay = (day) => ![3,6].includes(weekday(day));
 const typeFor = matchingDayType;
 const setStatus = (id, text) => { $(id).textContent=text; };
 const uid = () => globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)+Math.random().toString(36).slice(2);
-const emptyState = () => ({version:1,done:{},meals:{},tests:{},logs:{},recipes:[],products:{},body:[],profiles:[],program:null,blocks:{},events:{},checkins:{},customExercises:{},freeTests:{},timeModes:{},goalsDefined:{},goals:JSON.parse(JSON.stringify(DEFAULT_GOALS))});
+const emptyState = () => ({version:1,done:{},meals:{},tests:{},logs:{},recipes:[],products:{},body:[],profiles:[],program:null,blocks:{},events:{},checkins:{},wearables:{},recoveryDevice:null,sessionAdjustments:{},customExercises:{},freeTests:{},timeModes:{},goalsDefined:{},goals:JSON.parse(JSON.stringify(DEFAULT_GOALS))});
 let state=emptyState();
 function validateState(data){
   if(!data || data.version!==1 || !Array.isArray(data.body) || !data.done || !data.meals || !data.goals || !data.tests) throw Error('Ongeldig back-upbestand.');
@@ -239,6 +239,16 @@ function validateState(data){
   for(const [date,item] of Object.entries(data.checkins??{})){
     const clean=cleanCheck(item);
     if(isDate(date)&&clean)safe.checkins[date]=clean;
+  }
+  if(data.recoveryDevice===POLAR_DEVICE)safe.recoveryDevice=POLAR_DEVICE;
+  for(const [date,item] of Object.entries(data.wearables??{})){
+    const clean=cleanWearable(item);
+    if(isDate(date)&&clean)safe.wearables[date]=clean;
+  }
+  for(const [date,item] of Object.entries(data.sessionAdjustments??{})){
+    if(!isDate(date))continue;
+    const clean=cleanAdjustment(item,date);
+    if(clean)safe.sessionAdjustments[date]=clean;
   }
   for(const item of Object.values(data.customExercises??{})){
     const clean=cleanCustomExercise(item);
@@ -356,11 +366,11 @@ function doneButton(date){
   return '<button class="btn '+(done?'':'primary')+'" type="button" data-done="'+date+'" aria-pressed="'+done+'">'+(done?'✓ Voltooid · ongedaan maken':'Markeer als voltooid')+'</button>';
 }
 function renderSession(date,expanded,context='plan'){
-  const i=delta(date,START), w=Math.floor(i/7), d=weekday(date), s=session(w,d);
+  const d=weekday(date), s=sessionForDate(date);
   const status=state.done[date]?'<span class="pill ok">✓ Voltooid</span>':'<span class="pill">'+escapeHTML(s.time)+'</span>';
   const open=expanded?'':'<button class="btn" type="button" data-jump="'+date+'">Bekijk oefeningen</button>';
   return '<p class="eyebrow">'+DAYS[d]+' · '+fmtDate(date)+'</p><div class="row between"><h3>'+escapeHTML(s.title)+'</h3>'+status+'</div><p class="muted">'+escapeHTML(s.intro)+'</p>'+
-    testMarkup(date)+(expanded?s.moves.map(moveMarkup).join(''):'')+'<div class="actions spaced">'+(workoutDay(date)?doneButton(date):'')+open+
+    recoveryPlanMarkup(date)+testMarkup(date)+(expanded?s.moves.map(moveMarkup).join(''):'')+'<div class="actions spaced">'+(workoutDay(date)?doneButton(date):'')+open+
     '<button type="button" class="btn" data-log-date="'+date+'" data-log-session="'+programLogId(date)+'" data-log-focus>Log een set</button><button type="button" class="btn small" data-copy-session="'+date+'">Kopieer sessie</button></div><p class="status" id="'+context+'-copy-'+date+'" role="status"></p>';
 }
 function renderTraining(){
@@ -435,8 +445,10 @@ function renderToday(){
     '<p class="muted small">'+(lastJump==null?'Bewaar een sprongtest om je voortgang te volgen.':'Laatste aanloopsprong: '+num(lastJump)+' cm')+'</p>'+
     '<button class="btn small" data-open="about" type="button">Over mij en voortgang</button>';
   const check=state.checkins[current];
-  $('today-recovery').innerHTML='<p class="eyebrow">HERSTEL VANDAAG</p><p class="muted small">'+(check?(checkinLabel(check)||'Check-in bewaard.'):'Volg je slaap en hoe fris je je voelt.')+'</p>'+
-    '<button class="btn small" data-recovery-date="'+current+'" type="button">'+(check?'Bekijk check-in':'Doe je check-in')+'</button>';
+  const watch=state.wearables[current];
+  $('today-recovery').innerHTML='<p class="eyebrow">HERSTEL VANDAAG</p>'+recoverySummary(current)+'<p class="muted small spaced">'+
+    (check?(checkinLabel(check)||'Check-in bewaard.'):watch?wearableLabel(watch):'Volg je slaap en hoe fris je je voelt.')+'</p>'+
+    '<button class="btn small" data-recovery-date="'+current+'" type="button">'+(check||watch?'Bekijk check-in en advies':'Doe je check-in')+'</button>';
 }
 let readyToRender=false;
 const openedViews=new Set();
@@ -1160,7 +1172,7 @@ function renderLog(loadNote=false){
   $('log-heading').textContent=planned.title;
   $('log-description').textContent=fmtDate(logDate)+(planned.exercises.length?' · Tik op een oefening om ze te loggen.':' · Kies zelf een oefening.');
   $('log-planned').innerHTML=planned.exercises.map(id=>'<button class="btn small" type="button" data-prefill="'+id+'">'+escapeHTML(exerciseById[id].name)+'</button>').join('');
-  $('log-test').innerHTML=logSession===programLogId(logDate)?testMarkup(logDate):'';
+  $('log-test').innerHTML=logSession===programLogId(logDate)?recoveryPlanMarkup(logDate)+testMarkup(logDate):'';
   $('set-list').innerHTML=sets.map((set,i)=>
     '<div class="entry"><div><strong>'+escapeHTML(exerciseById[set.exercise].name)+'</strong><small>'+describeSet(set)+'</small></div>'+
     '<div class="actions"><button class="btn small" type="button" data-edit-set="'+escapeHTML(set.id)+'">Wijzig</button><button class="btn small danger" type="button" data-delete-set="'+escapeHTML(set.id)+'" aria-label="Verwijder set '+(i+1)+'">Wis</button></div></div>'
@@ -1372,7 +1384,7 @@ async function copyText(text,status,message){
   }
 }
 function sessionText(date){
-  const i=delta(date,START), d=weekday(date), s=session(Math.floor(i/7),d);
+  const d=weekday(date), s=sessionForDate(date);
   return [DAYS[d]+' '+fmtDate(date)+' · '+s.title+' · '+s.time,s.intro,...s.moves.map(([name,dose,pause,note])=>name+' — '+dose+' · '+pause+' rust · '+note)].join('\n');
 }
 function loadStateViews(){
@@ -1596,42 +1608,65 @@ document.addEventListener('click',event=>{
   }
 });
 function checkinLabel(item){
-  return [item.sleep===null?'':num(item.sleep,2)+' uur slaap',item.energy===null?'':'Frisheid '+item.energy+'/5',
-    item.legs===null?'':'Benen '+item.legs+'/5'].filter(Boolean).join(' · ');
+  if(!item)return '';
+  return [item.sleep==null?'':num(item.sleep,2)+' uur slaap',item.energy==null?'':'Frisheid '+item.energy+'/5',
+    item.quality==null?'':'Slaapkwaliteit '+item.quality+'/5',item.legs==null?'':'Benen '+item.legs+'/5'].filter(Boolean).join(' · ');
 }
 function loadCheckin(date){
   const currentCheck=state.checkins[date];
   field(recoveryForm,'date').value=date;
-  for(const key of ['sleep','energy','legs','note'])field(recoveryForm,key).value=currentCheck?.[key]??'';
-  $('recovery-delete').hidden=!currentCheck;
+  for(const key of ['sleep','quality','energy','legs','note'])field(recoveryForm,key).value=currentCheck?.[key]??'';
+  loadWearableFields(date);
+  $('recovery-delete').hidden=!currentCheck&&!state.wearables[date];
   setStatus('recovery-status','');
+  renderRecoveryAssessment();
 }
 function renderRecovery(){
   if($('recovery').hidden)return;
-  $('recovery-history').innerHTML=Object.entries(state.checkins).sort(([a],[b])=>b.localeCompare(a)).slice(0,21).map(([date,item])=>
-    '<div class="entry"><div><strong>'+fmtDate(date)+'</strong><small>'+checkinLabel(item)+'</small>'+
-    (item.note?'<small>'+escapeHTML(item.note)+'</small>':'')+'</div><button type="button" class="btn small" data-recovery-date="'+date+'">Bekijk</button></div>').join('')||
+  renderRecoveryDevice();
+  renderRecoveryAssessment();
+  const dates=[...new Set([...Object.keys(state.checkins),...Object.keys(state.wearables)])];
+  $('recovery-history').innerHTML=dates.sort((a,b)=>b.localeCompare(a)).slice(0,28).map(date=>{
+    const item=state.checkins[date], watch=state.wearables[date];
+    return '<div class="entry"><div><strong>'+fmtDate(date)+'</strong><small>'+checkinLabel(item)+'</small>'+
+      (watch?'<small>'+escapeHTML(wearableLabel(watch))+'</small>':'')+
+      (item?.note?'<small>'+escapeHTML(item.note)+'</small>':'')+'</div><button type="button" class="btn small" data-recovery-date="'+date+'">Bekijk</button></div>';
+    }).join('')||
     '<p class="muted small">Je hebt nog geen check-ins.</p>';
 }
 field(recoveryForm,'date').addEventListener('change',()=>{const date=value(recoveryForm,'date');if(isDate(date))loadCheckin(date);});
 recoveryForm.addEventListener('submit',event=>{
   event.preventDefault();
-  const date=value(recoveryForm,'date'), item=cleanCheck({sleep:number(recoveryForm,'sleep'),energy:number(recoveryForm,'energy'),legs:number(recoveryForm,'legs'),note:value(recoveryForm,'note').trim()});
-  if(!isDate(date)||!item){setStatus('recovery-status','Vul minstens één waarde of een notitie in.');return;}
-  state.checkins[date]=item;
+  const date=value(recoveryForm,'date'), item=cleanCheck({sleep:number(recoveryForm,'sleep'),quality:number(recoveryForm,'quality'),energy:number(recoveryForm,'energy'),legs:number(recoveryForm,'legs'),note:value(recoveryForm,'note').trim()});
+  const watch=readWearableFields();
+  if(!isDate(date)||(!item&&!watch)){setStatus('recovery-status','Vul minstens één waarde of een notitie in.');return;}
+  const changes=[];
+  if(item){
+    state.checkins[date]=item;
+    changes.push(storeItem('checkin',date,item));
+  }else{
+    delete state.checkins[date];
+    changes.push(removeItem('checkin',date));
+  }
+  if(state.recoveryDevice===POLAR_DEVICE){
+    if(watch){state.wearables[date]=watch;changes.push(storeItem('wearable',date,watch));}
+    else {delete state.wearables[date];changes.push(removeItem('wearable',date));}
+  }
   loadCheckin(date);
-  saveStatus('recovery-status','Check-in bewaard.',storeItem('checkin',date,item));
+  saveStatus('recovery-status','Check-in bewaard.',...changes);
   renderRecovery();
-  renderToday();
+  renderToday();renderTraining();renderLog();
 });
 $('recovery-delete').addEventListener('click',()=>{
   const date=value(recoveryForm,'date');
-  if(!state.checkins[date]||!window.confirm('Deze check-in wissen?'))return;
+  if((!state.checkins[date]&&!state.wearables[date])||!window.confirm('Deze check-in en eventuele horlogegegevens wissen?'))return;
   delete state.checkins[date];
+  delete state.wearables[date];
+  delete state.sessionAdjustments[date];
   loadCheckin(date);
-  saveStatus('recovery-status','Check-in gewist.',removeItem('checkin',date));
+  saveStatus('recovery-status','Check-in gewist.',removeItem('checkin',date),removeItem('wearable',date),removeItem('adjustment',date));
   renderRecovery();
-  renderToday();
+  renderToday();renderTraining();renderLog();
 });
 exerciseForm.addEventListener('submit',event=>{
   event.preventDefault();
@@ -1655,6 +1690,7 @@ exerciseForm.addEventListener('submit',event=>{
 });
 field(exerciseForm,'type').innerHTML=Object.entries(CUSTOM_UNITS).map(([key,name])=>'<option value="'+key+'">'+name+'</option>').join('');
 initProducts();
+initRecovery();
 const showLinkedTab=()=>{const tab=location.hash.slice(1);if(tab!=='main')showTab(tab||'today',false);};
 async function startApp(){
   await startStorage();

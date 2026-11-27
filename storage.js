@@ -145,6 +145,9 @@ function recordsFromState(data) {
   items('recipe',data.recipes);
   entries('exercise',data.customExercises);
   entries('checkin',data.checkins);
+  entries('wearable',data.wearables);
+  entries('adjustment',data.sessionAdjustments);
+  if(data.recoveryDevice)rows.push(storeItem('meta','recoveryDevice',data.recoveryDevice));
   entries('freeTest',data.freeTests);
   entries('timeMode',data.timeModes);
   entries('product',data.products);
@@ -154,7 +157,7 @@ function recordsFromState(data) {
 function stateFromRecords(rows) {
   const data = emptyState();
   const lists = {meal:data.meals,event:data.events};
-  const maps = {checkin:data.checkins,exercise:data.customExercises,freeTest:data.freeTests,timeMode:data.timeModes,product:data.products};
+  const maps = {checkin:data.checkins,wearable:data.wearables,adjustment:data.sessionAdjustments,exercise:data.customExercises,freeTest:data.freeTests,timeMode:data.timeModes,product:data.products};
   const logFor = date => data.logs[date]??={sets:[],note:'',sessionNotes:{}};
   rows.sort((a,b)=>(a.order??0)-(b.order??0));
   for (const {collection,id,scope,value,order} of rows) {
@@ -179,6 +182,7 @@ function stateFromRecords(rows) {
       block[collection==='done'?'done':'tests'][id]=value;
     }
     else if (collection==='meta'&&id==='program') data.program=value;
+    else if (collection==='meta'&&id==='recoveryDevice') data.recoveryDevice=value;
   }
   const start=data.program?.start??LEGACY_START;
   if (data.blocks[start]) {
